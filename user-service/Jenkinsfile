@@ -1,0 +1,51 @@
+pipeline {
+    agent any
+
+    tools {
+        sonarQubeScanner 'SonarScanner'
+    }
+
+    environment {
+        SERVICE_NAME = "user-service"
+    }
+
+    stages {
+        stage('Checkout SCM') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh """
+                        cd ${SERVICE_NAME}
+                        sonar-scanner \
+                        -Dsonar.projectKey=${SERVICE_NAME} \
+                        -Dsonar.sources=. \
+                        -Dsonar.language= python \
+                        -Dsoanr.python.version=3.11 \
+                    """
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 2, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "User Service SUCCESS"
+        }
+        failure {
+            echo "User Service FAILED"
+        }
+    }
+}
