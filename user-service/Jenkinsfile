@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        sonarQubeScanner 'SonarScanner'
-    }
-
     environment {
         SERVICE_NAME = "user-service"
     }
@@ -20,10 +16,9 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     sh """
-                        cd ${SERVICE_NAME}
-                        sonar-scanner \
+                        ${tool 'SonarScanner'}/bin/sonar-scanner \
                         -Dsonar.projectKey=${SERVICE_NAME} \
-                        -Dsonar.sources=. \
+                        -Dsonar.sources=${SERVICE_NAME} \
                         -Dsonar.language= python \
                         -Dsoanr.python.version=3.11 \
                     """

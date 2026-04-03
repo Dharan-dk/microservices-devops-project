@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        sonarQubeScanner 'SonarScanner'
-    }
-
     environment {
         SERVICE_NAME = "order-service"
     }
@@ -23,10 +19,9 @@ pipeline {
                 echo "Running SonarQube - order-service"
                 withSonarQubeEnv('SonarQube') {
                     sh """
-                        cd ${SERVICE_NAME}
-                        sonar-scanner \
+                        ${tool 'SonarScanner'}/bin/sonar-scanner \
                         -Dsonar.projectKey=${SERVICE_NAME} \
-                        -Dsonar.sources=. \
+                        -Dsonar.sources=${SERVICE_NAME} \
                         -Dsonar.language=py \
                         -Dsonar.python.version=3.11
                     """
