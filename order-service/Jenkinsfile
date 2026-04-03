@@ -1,0 +1,54 @@
+pipeline {
+    agent any
+
+    tools {
+        sonarQubeScanner 'SonarScanner'
+    }
+
+    environment {
+        SERVICE_NAME = "order-service"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                echo "Checkout order-service"
+                checkout scm
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                echo "Running SonarQube - order-service"
+                withSonarQubeEnv('SonarQube') {
+                    sh """
+                        cd ${SERVICE_NAME}
+                        sonar-scanner \
+                        -Dsonar.projectKey=${SERVICE_NAME} \
+                        -Dsonar.sources=. \
+                        -Dsonar.language=py \
+                        -Dsonar.python.version=3.11
+                    """
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 2, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Order Service SUCCESS"
+        }
+        failure {
+            echo "Order Service FAILED"
+        }
+    }
+}
