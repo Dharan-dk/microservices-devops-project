@@ -21,9 +21,7 @@ pipeline {
                     sh """
                         ${tool 'SonarScanner'}/bin/sonar-scanner \
                         -Dsonar.projectKey=${SERVICE_NAME} \
-                        -Dsonar.sources=${SERVICE_NAME} \
-                        -Dsonar.language=py \
-                        -Dsonar.python.version=3.11
+                        -Dsonar.sources=${SERVICE_NAME}
                     """
                 }
             }
