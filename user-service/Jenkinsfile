@@ -41,6 +41,10 @@ pipeline {
     }
 
     post {
+        always {
+            echo "Cleaning up workspace for order-service"
+            cleanWs()
+        }
         success {
             echo "User Service SUCCESS"
         }
