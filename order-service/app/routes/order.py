@@ -74,7 +74,7 @@ def list_orders(user_id: int | None = None) -> list[OrderResponse]:
 
 
 @router.patch("/{order_id}/status", response_model=OrderResponse)
-def update_order_status(order_id: int, status: OrderStatus) -> OrderResponse:
+def update_order_status(order_id: int, status_update: OrderStatus) -> OrderResponse:
     """Update order status."""
     if order_id not in order_db:
         logger.warning(f"Order not found: id={order_id}")
@@ -83,8 +83,8 @@ def update_order_status(order_id: int, status: OrderStatus) -> OrderResponse:
             detail=f"Order with id {order_id} not found",
         )
     
-    order_db[order_id]["status"] = status
-    logger.info(f"Order status updated: id={order_id}, status={status}")
+    order_db[order_id]["status"] = status_update
+    logger.info(f"Order status updated: id={order_id}, status={status_update}")
     return order_db[order_id]
 
 
@@ -98,4 +98,5 @@ def delete_order(order_id: int) -> None:
             detail=f"Order with id {order_id} not found",
         )
     del order_db[order_id]
+    logger.info(f"Order deleted: id={order_id}")
     logger.info(f"Order deleted: id={order_id}")

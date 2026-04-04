@@ -1,54 +1,112 @@
 pipeline {
     agent any
 
+    environment {
+        VENV = "venv"
+        PYTHON = "python3"
+    }
+
+    options {
+        timestamps()
+        skipDefaultCheckout(true)
+    }
+
     stages {
 
-        stage('Checkout SCM') {
+        stage('Checkout') {
             steps {
                 echo "Cloning repository"
                 checkout scm
             }
         }
 
-        stage('User Service - SonarQube Analysis') {
+        stage('Setup Environment') {
             steps {
-                echo "Analyzing user-service"
-                withSonarQubeEnv('SonarQube') {
-                    sh """
-                        ${tool 'SonarScanner'}/bin/sonar-scanner \
-                        -Dsonar.projectKey=user-service \
-                        -Dsonar.sources=user-service
-                    """
+                sh """
+                    ${PYTHON} -m venv ${VENV}
+                    . ${VENV}/bin/activate
+                    pip install --upgrade pip
+                """
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh """
+                    . ${VENV}/bin/activate
+                    pip install -r user-service/requirements.txt
+                    pip install -r order-service/requirements.txt
+                """
+            }
+        }
+
+        stage('Test + Coverage') {
+            parallel {
+
+                stage('User Service') {
+                    steps {
+                        sh """
+                            . ${VENV}/bin/activate
+                            pytest user-service/tests \
+                            --cov=user-service/app \
+                            --cov-report=xml:user-service/coverage.xml \
+                            --junitxml=user-service/test-results.xml
+                        """
+                        junit 'user-service/test-results.xml'
+                    }
+                }
+
+                stage('Order Service') {
+                    steps {
+                        sh """
+                            . ${VENV}/bin/activate
+                            pytest order-service/tests \
+                            --cov=order-service/app \
+                            --cov-report=xml:order-service/coverage.xml \
+                            --junitxml=order-service/test-results.xml
+                        """
+                        junit 'order-service/test-results.xml'
+                    }
                 }
             }
         }
 
-        stage('User Service - Quality Gate') {
-            steps {
-                echo "Waiting for user-service Quality Gate"
-                timeout(time: 3, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+        stage('SonarQube Analysis') {
+            parallel {
+
+                stage('User Service Sonar') {
+                    steps {
+                        withSonarQubeEnv('SonarQube') {
+                            sh """
+                                ${tool 'SonarScanner'}/bin/sonar-scanner \
+                                -Dsonar.projectKey=user-service \
+                                -Dsonar.sources=user-service \
+                                -Dsonar.python.version=3.11 \
+                                -Dsonar.python.coverage.reportPaths=user-service/coverage.xml
+                            """
+                        }
+                    }
+                }
+
+                stage('Order Service Sonar') {
+                    steps {
+                        withSonarQubeEnv('SonarQube') {
+                            sh """
+                                ${tool 'SonarScanner'}/bin/sonar-scanner \
+                                -Dsonar.projectKey=order-service \
+                                -Dsonar.sources=order-service \
+                                -Dsonar.python.version=3.11 \
+                                -Dsonar.python.coverage.reportPaths=order-service/coverage.xml
+                            """
+                        }
+                    }
                 }
             }
         }
 
-        stage('Order Service - SonarQube Analysis') {
+        stage('Quality Gate') {
             steps {
-                echo "Analyzing order-service"
-                withSonarQubeEnv('SonarQube') {
-                    sh """
-                        ${tool 'SonarScanner'}/bin/sonar-scanner \
-                        -Dsonar.projectKey=order-service \
-                        -Dsonar.sources=order-service
-                    """
-                }
-            }
-        }
-
-        stage('Order Service - Quality Gate') {
-            steps {
-                echo "Waiting for order-service Quality Gate"
-                timeout(time: 3, unit: 'MINUTES') {
+                timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
@@ -61,10 +119,10 @@ pipeline {
             cleanWs()
         }
         success {
-            echo "ALL SERVICES PASSED QUALITY GATES SUCCESSFULLY"
+            echo "Pipeline completed successfully"
         }
         failure {
-            echo "PIPELINE FAILED DUE TO QUALITY GATE FAILURE"
+            echo "Pipeline failed"
         }
     }
 }
