@@ -10,7 +10,7 @@ user_db: dict[int, dict] = {}
 user_counter = 0
 
 
-@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 def create_user(user: UserCreate) -> UserResponse:
     """Create a new user and return it with assigned ID."""
     global user_counter
@@ -21,7 +21,7 @@ def create_user(user: UserCreate) -> UserResponse:
     return new_user
 
 
-@router.get("/{user_id}", response_model=UserResponse)
+@router.get("/{user_id}")
 def get_user(user_id: int) -> UserResponse:
     """Retrieve a user by ID."""
     if user_id not in user_db:
@@ -34,14 +34,14 @@ def get_user(user_id: int) -> UserResponse:
     return user_db[user_id]
 
 
-@router.get("/", response_model=list[UserResponse])
+@router.get("/")
 def list_users() -> list[UserResponse]:
     """List all users."""
     logger.info(f"Listing all users (total: {len(user_db)})")
     return list(user_db.values())
 
 
-@router.put("/{user_id}", response_model=UserResponse)
+@router.put("/{user_id}")
 def update_user(user_id: int, user: UserCreate) -> UserResponse:
     """Update a user by ID."""
     if user_id not in user_db:
