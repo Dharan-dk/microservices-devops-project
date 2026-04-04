@@ -39,3 +39,31 @@ def list_users() -> list[UserResponse]:
     """List all users."""
     logger.info(f"Listing all users (total: {len(user_db)})")
     return list(user_db.values())
+
+
+@router.put("/{user_id}", response_model=UserResponse)
+def update_user(user_id: int, user: UserCreate) -> UserResponse:
+    """Update a user by ID."""
+    if user_id not in user_db:
+        logger.warning(f"User not found: id={user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id {user_id} not found",
+        )
+    updated_user = {"id": user_id, **user.model_dump()}
+    user_db[user_id] = updated_user
+    logger.info(f"User updated: id={user_id}, email={user.email}")
+    return updated_user
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: int) -> None:
+    """Delete a user by ID."""
+    if user_id not in user_db:
+        logger.warning(f"User not found for deletion: id={user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id {user_id} not found",
+        )
+    del user_db[user_id]
+    logger.info(f"User deleted: id={user_id}")
