@@ -15,28 +15,31 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                echo "Cloning repository"
                 checkout scm
             }
         }
 
         stage('Setup Environment') {
             steps {
-                sh """
-                    ${PYTHON} -m venv ${VENV}
-                    . ${VENV}/bin/activate
-                    pip install --upgrade pip
-                """
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    sh """
+                        ${PYTHON} -m venv ${VENV}
+                        . ${VENV}/bin/activate
+                        pip install --upgrade pip
+                    """
+                }
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh """
-                    . ${VENV}/bin/activate
-                    pip install -r user-service/requirements.txt
-                    pip install -r order-service/requirements.txt
-                """
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    sh """
+                        . ${VENV}/bin/activate
+                        pip install -r user-service/requirements.txt
+                        pip install -r order-service/requirements.txt
+                    """
+                }
             }
         }
 
@@ -45,27 +48,31 @@ pipeline {
 
                 stage('User Service') {
                     steps {
-                        sh """
-                            . ${VENV}/bin/activate
-                            pytest user-service/tests \
-                            --cov=user-service/app \
-                            --cov-report=xml:user-service/coverage.xml \
-                            --junitxml=user-service/test-results.xml
-                        """
-                        junit 'user-service/test-results.xml'
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            sh """
+                                . ${VENV}/bin/activate
+                                pytest user-service/tests \
+                                --cov=user-service/app \
+                                --cov-report=xml:user-service/coverage.xml \
+                                --junitxml=user-service/test-results.xml
+                            """
+                            junit 'user-service/test-results.xml'
+                        }
                     }
                 }
 
                 stage('Order Service') {
                     steps {
-                        sh """
-                            . ${VENV}/bin/activate
-                            pytest order-service/tests \
-                            --cov=order-service/app \
-                            --cov-report=xml:order-service/coverage.xml \
-                            --junitxml=order-service/test-results.xml
-                        """
-                        junit 'order-service/test-results.xml'
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            sh """
+                                . ${VENV}/bin/activate
+                                pytest order-service/tests \
+                                --cov=order-service/app \
+                                --cov-report=xml:order-service/coverage.xml \
+                                --junitxml=order-service/test-results.xml
+                            """
+                            junit 'order-service/test-results.xml'
+                        }
                     }
                 }
             }
@@ -76,28 +83,32 @@ pipeline {
 
                 stage('User Service Sonar') {
                     steps {
-                        withSonarQubeEnv('SonarQube') {
-                            sh """
-                                ${tool 'SonarScanner'}/bin/sonar-scanner \
-                                -Dsonar.projectKey=user-service \
-                                -Dsonar.sources=user-service \
-                                -Dsonar.python.version=3.11 \
-                                -Dsonar.python.coverage.reportPaths=user-service/coverage.xml
-                            """
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            withSonarQubeEnv('SonarQube') {
+                                sh """
+                                    ${tool 'SonarScanner'}/bin/sonar-scanner \
+                                    -Dsonar.projectKey=user-service \
+                                    -Dsonar.sources=user-service \
+                                    -Dsonar.python.version=3.11 \
+                                    -Dsonar.python.coverage.reportPaths=user-service/coverage.xml
+                                """
+                            }
                         }
                     }
                 }
 
                 stage('Order Service Sonar') {
                     steps {
-                        withSonarQubeEnv('SonarQube') {
-                            sh """
-                                ${tool 'SonarScanner'}/bin/sonar-scanner \
-                                -Dsonar.projectKey=order-service \
-                                -Dsonar.sources=order-service \
-                                -Dsonar.python.version=3.11 \
-                                -Dsonar.python.coverage.reportPaths=order-service/coverage.xml
-                            """
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            withSonarQubeEnv('SonarQube') {
+                                sh """
+                                    ${tool 'SonarScanner'}/bin/sonar-scanner \
+                                    -Dsonar.projectKey=order-service \
+                                    -Dsonar.sources=order-service \
+                                    -Dsonar.python.version=3.11 \
+                                    -Dsonar.python.coverage.reportPaths=order-service/coverage.xml
+                                """
+                            }
                         }
                     }
                 }
@@ -115,14 +126,7 @@ pipeline {
 
     post {
         always {
-            echo "Cleaning workspace"
             cleanWs()
-        }
-        success {
-            echo "Pipeline completed successfully"
-        }
-        failure {
-            echo "Pipeline failed"
         }
     }
 }
