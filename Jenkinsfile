@@ -79,38 +79,25 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-            parallel {
+            steps {
 
-                stage('User Service Sonar') {
-                    steps {
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            withSonarQubeEnv('SonarQube') {
-                                sh """
-                                    ${tool 'SonarScanner'}/bin/sonar-scanner \
-                                    -Dsonar.projectKey=user-service \
-                                    -Dsonar.sources=user-service \
-                                    -Dsonar.python.version=3.11 \
-                                    -Dsonar.python.coverage.reportPaths=user-service/coverage.xml
-                                """
-                            }
-                        }
-                    }
-                }
+                withSonarQubeEnv('SonarQube') {
 
-                stage('Order Service Sonar') {
-                    steps {
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            withSonarQubeEnv('SonarQube') {
-                                sh """
-                                    ${tool 'SonarScanner'}/bin/sonar-scanner \
-                                    -Dsonar.projectKey=order-service \
-                                    -Dsonar.sources=order-service \
-                                    -Dsonar.python.version=3.11 \
-                                    -Dsonar.python.coverage.reportPaths=order-service/coverage.xml
-                                """
-                            }
-                        }
-                    }
+                    sh """
+                        ${tool 'SonarQube'}/bin/sonar-scanner \
+                        -Dsonar.projectKey=user-service \
+                        -Dsonar.sources=user-service \
+                        -Dsonar.python.version=3.11 \
+                        -Dsonar.python.coverage.reportPaths=user-service/coverage.xml
+                    """
+
+                    sh """
+                        ${tool 'SonarQube'}/bin/sonar-scanner \
+                        -Dsonar.projectKey=order-service \
+                        -Dsonar.sources=order-service \
+                        -Dsonar.python.version=3.11 \
+                        -Dsonar.python.coverage.reportPaths=order-service/coverage.xml
+                    """
                 }
             }
         }
@@ -126,7 +113,16 @@ pipeline {
 
     post {
         always {
+            echo 'Cleaning up workspace...'
             cleanWs()
+        }
+
+        success {
+            echo 'Build succeeded and passed SonarQube quality gate.'
+        }
+
+        failure {
+            echo 'Build failed or did not pass SonarQube quality gate.'
         }
     }
 }
