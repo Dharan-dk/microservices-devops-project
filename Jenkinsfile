@@ -114,12 +114,11 @@ pipeline {
 
     post {
         always {
-            echo 'Cleaning up workspace...'
             cleanWs()
         }
 
         success {
-            echo 'Build succeeded and passed SonarQube quality gate.'
+            echo 'Build succeeded. SonarQube quality gate passed.'
         }
 
         failure {
