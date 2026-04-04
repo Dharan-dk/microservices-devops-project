@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, status
 from app.schemas.order_schema import OrderCreate, OrderResponse, OrderStatus
 from app.utils.logger import logger
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter()
 
@@ -16,7 +16,7 @@ def calculate_order_total(items: list[dict]) -> float:
     return sum(item["total_price"] for item in items)
 
 
-@router.post("/", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 def create_order(order: OrderCreate) -> OrderResponse:
     """Create a new order and return it with assigned ID."""
     global order_counter
@@ -42,14 +42,14 @@ def create_order(order: OrderCreate) -> OrderResponse:
         "status": OrderStatus.PENDING,
         "total_amount": total_amount,
         "shipping_address": order.shipping_address,
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
     order_db[order_counter] = new_order
     logger.info(f"Order created: id={order_counter}, user_id={order.user_id}, total=${total_amount}")
     return new_order
 
 
-@router.get("/{order_id}", response_model=OrderResponse)
+@router.get("/{order_id}")
 def get_order(order_id: int) -> OrderResponse:
     """Retrieve an order by ID."""
     if order_id not in order_db:
@@ -62,7 +62,7 @@ def get_order(order_id: int) -> OrderResponse:
     return order_db[order_id]
 
 
-@router.get("/", response_model=list[OrderResponse])
+@router.get("/")
 def list_orders(user_id: int | None = None) -> list[OrderResponse]:
     """List orders, optionally filtered by user_id."""
     if user_id is not None:
@@ -73,7 +73,7 @@ def list_orders(user_id: int | None = None) -> list[OrderResponse]:
     return list(order_db.values())
 
 
-@router.patch("/{order_id}/status", response_model=OrderResponse)
+@router.patch("/{order_id}/status")
 def update_order_status(order_id: int, status_update: OrderStatus) -> OrderResponse:
     """Update order status."""
     if order_id not in order_db:

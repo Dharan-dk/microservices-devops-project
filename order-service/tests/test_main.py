@@ -8,9 +8,23 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
-from app.routes.order import calculate_order_total
+from app.routes.order import calculate_order_total, order_db, order_counter
+
+# Use pytest.approx for floating point comparisons (SonarQube S1244)
+approx = pytest.approx
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def reset_order_db():
+    """Reset order database before each test for isolation."""
+    from app.routes import order
+    order.order_db.clear()
+    order.order_counter = 0
+    yield
+    order.order_db.clear()
+    order.order_counter = 0
 
 
 class TestHealthEndpoints:
@@ -51,9 +65,9 @@ class TestOrderCreation:
         assert "id" in data
         assert data["user_id"] == 1
         assert data["status"] == "pending"
-        assert data["total_amount"] == 109.97
+        assert data["total_amount"] == approx(109.97)
         assert len(data["items"]) == 2
-        assert data["items"][0]["total_price"] == 59.98
+        assert data["items"][0]["total_price"] == approx(59.98)
 
     def test_create_order_single_item(self):
         """Test creating order with single item."""
@@ -65,7 +79,7 @@ class TestOrderCreation:
         response = client.post("/orders/", json=order_data)
         assert response.status_code == 201
         data = response.json()
-        assert data["total_amount"] == 50.00
+        assert data["total_amount"] == approx(50.00)
 
     def test_create_order_decimal_prices(self):
         """Test creating order with decimal prices."""
@@ -80,7 +94,7 @@ class TestOrderCreation:
         response = client.post("/orders/", json=order_data)
         assert response.status_code == 201
         data = response.json()
-        assert data["total_amount"] == 89.00
+        assert data["total_amount"] == approx(89.00)
 
     def test_create_order_invalid_data_minimal_address(self):
         """Test creating order with very short address."""
@@ -137,7 +151,7 @@ class TestOrderRetrieval:
         data = response.json()
         assert data["id"] == order_id
         assert data["user_id"] == 10
-        assert data["total_amount"] == 99.99
+        assert data["total_amount"] == approx(99.99)
 
     def test_get_order_not_found(self):
         """Test retrieving non-existent order."""
@@ -337,7 +351,7 @@ class TestOrderUtilities:
         """Test calculating total with single item."""
         items = [{"total_price": 29.99}]
         total = calculate_order_total(items)
-        assert total == 29.99
+        assert total == approx(29.99)
 
     def test_calculate_order_total_multiple_items(self):
         """Test calculating total with multiple items."""
@@ -346,7 +360,7 @@ class TestOrderUtilities:
             {"total_price": 49.99},
         ]
         total = calculate_order_total(items)
-        assert total == 79.98
+        assert total == approx(79.98)
 
     def test_calculate_order_total_decimal_prices(self):
         """Test calculating total with decimal prices."""
@@ -355,4 +369,4 @@ class TestOrderUtilities:
             {"total_price": 37.50},
         ]
         total = calculate_order_total(items)
-        assert total == 50.00
+        assert total == approx(50.00)

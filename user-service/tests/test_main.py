@@ -12,6 +12,17 @@ from app.main import app
 client = TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def reset_user_db():
+    """Reset user database before each test for isolation."""
+    from app.routes import user
+    user.user_db.clear()
+    user.user_counter = 0
+    yield
+    user.user_db.clear()
+    user.user_counter = 0
+
+
 class TestHealthEndpoints:
     """Test health check endpoints."""
 
