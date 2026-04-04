@@ -11,7 +11,11 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 FROM python:3.11-slim AS final
 
-RUN useradd -m -u 10001 app-user
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    useradd -m -u 10001 app-user
 
 WORKDIR /app
 
