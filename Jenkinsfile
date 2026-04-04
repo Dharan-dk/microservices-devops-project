@@ -15,6 +15,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
+                echo 'Checking out source code...'
                 checkout scm
             }
         }
@@ -84,7 +85,7 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
 
                     sh """
-                        ${tool 'SonarQube'}/bin/sonar-scanner \
+                        ${tool 'SonarScanner'}/bin/sonar-scanner \
                         -Dsonar.projectKey=user-service \
                         -Dsonar.sources=user-service \
                         -Dsonar.python.version=3.11 \
@@ -92,7 +93,7 @@ pipeline {
                     """
 
                     sh """
-                        ${tool 'SonarQube'}/bin/sonar-scanner \
+                        ${tool 'SonarScanner'}/bin/sonar-scanner \
                         -Dsonar.projectKey=order-service \
                         -Dsonar.sources=order-service \
                         -Dsonar.python.version=3.11 \
