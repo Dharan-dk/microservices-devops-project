@@ -228,9 +228,18 @@ pipeline {
     }
 
     post {
-        always { cleanWs() }
-        success { echo 'Pipeline complete. Images in ECR.' }
-        unstable { echo 'Pipeline unstable. Check Trivy or test results.' }
-        failure { echo 'Pipeline failed. Check logs.' }
+        always {
+            node('static-agent') {
+                cleanWs()
+            }
+        }
+
+        success {
+            echo 'Build succeeded and passed SonarQube quality gate. Artifacts pushed to ECR.'
+        }
+
+        failure {
+            echo 'Build failed or did not pass quality gate. Please check the logs for details.'
+        }
     }
 }
