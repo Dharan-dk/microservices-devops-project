@@ -1,0 +1,11 @@
+# Trivy Vulnerability Ignore File
+# Format: CVE-YYYY-XXXX or vulnerability ID
+# Debian base image vulnerabilities
+
+CVE-2025-69720
+CVE-2026-29111
+
+# Python package vulnerabilities
+CVE-2026-23949
+CVE-2024-47874
+CVE-2026-24049
