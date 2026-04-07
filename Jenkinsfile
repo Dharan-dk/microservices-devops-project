@@ -26,8 +26,12 @@ pipeline {
 
                 stash(
                     name: 'source-code',
-                    includes: '**/*',
-                    excludes: '.git/**'
+                    includes: '''
+                        user-service/**,
+                        order-service/**,
+                        Jenkinsfile,
+                        sonar-project.properties
+                    '''
                 )
             }
         }
