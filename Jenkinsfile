@@ -19,6 +19,25 @@ pipeline {
 
     stages {
 
+        stage('Verfiy agent') {
+            agent {
+                label 'static-agent'
+            }
+
+            steps {
+                echo "Running on agent: ${env.NODE_NAME}"
+                sh """
+                    python3 --version
+                    docker --version
+                    aws --version
+                    trivy --version
+                    hostname
+                    whoami
+                    java -version
+                """
+            }
+        }
+
         stage('Checkout') {
             steps {
                 echo 'Checking out source code...'
