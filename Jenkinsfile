@@ -1,10 +1,9 @@
 pipeline {
-    agent any
+    agent none
 
     environment {
-        VENV  = "venv"
-        PYTHON = "python3"
-
+        VENV                = "venv"
+        PYTHON              = "python3"
         AWS_REGION          = "ap-south-1"
         ECR_REGISTRY        = "204844252943.dkr.ecr.ap-south-1.amazonaws.com"
         USER_SERVICE_IMAGE  = "${ECR_REGISTRY}/cloudmart-user-service"
@@ -19,215 +18,219 @@ pipeline {
 
     stages {
 
-        stage('Verfiy agent') {
-            agent {
-                label 'static-agent'
-            }
-
-            steps {
-                echo "Running on agent: ${env.NODE_NAME}"
-                sh """
-                    python3 --version
-                    docker --version
-                    aws --version
-                    trivy --version
-                    hostname
-                    whoami
-                    java -version
-                """
-            }
-        }
-
         stage('Checkout') {
+            agent { label 'static-agent' }
             steps {
-                echo 'Checking out source code...'
+                echo "Checking out on: ${env.NODE_NAME}"
                 checkout scm
+
+                stash(
+                    name: 'source-code',
+                    includes: '**/*',
+                    excludes: '.git/**'
+                )
             }
         }
 
-        stage('Setup Environment') {
-            steps {
-                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    sh """
-                        ${PYTHON} -m venv ${VENV}
-                        . ${VENV}/bin/activate
-                        pip install --upgrade pip
-                    """
-                }
-            }
-        }
+        stage('Test & Quality') {
+            agent { label 'static-agent' }
+            stages {
 
-        stage('Install Dependencies') {
-            steps {
-                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    sh """
-                        . ${VENV}/bin/activate
-                        pip install -r user-service/requirements.txt
-                        pip install -r order-service/requirements.txt
-                    """
-                }
-            }
-        }
-
-        stage('Test + Coverage') {
-            parallel {
-                stage('User Service') {
+                stage('Setup Environment') {
                     steps {
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        unstash 'source-code'
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                             sh """
+                                ${PYTHON} -m venv ${VENV}
                                 . ${VENV}/bin/activate
-                                pytest user-service/tests \
-                                    --cov=user-service/app \
-                                    --cov-report=xml:user-service/coverage.xml \
-                                    --junitxml=user-service/test-results.xml
+                                pip install --upgrade pip --quiet
                             """
-                            junit 'user-service/test-results.xml'
                         }
                     }
                 }
-                stage('Order Service') {
+
+                stage('Install Dependencies') {
                     steps {
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                             sh """
                                 . ${VENV}/bin/activate
-                                pytest order-service/tests \
-                                    --cov=order-service/app \
-                                    --cov-report=xml:order-service/coverage.xml \
-                                    --junitxml=order-service/test-results.xml
+                                pip install --quiet \
+                                    -r user-service/requirements.txt
+                                pip install --quiet \
+                                    -r order-service/requirements.txt
                             """
-                            junit 'order-service/test-results.xml'
                         }
                     }
                 }
-            }
-        }
 
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh """
-                        ${tool 'SonarScanner'}/bin/sonar-scanner \
-                            -Dsonar.projectKey=user-service \
-                            -Dsonar.sources=user-service \
-                            -Dsonar.python.version=3.11 \
-                            -Dsonar.python.coverage.reportPaths=user-service/coverage.xml
-                    """
-                    sh """
-                        ${tool 'SonarScanner'}/bin/sonar-scanner \
-                            -Dsonar.projectKey=order-service \
-                            -Dsonar.sources=order-service \
-                            -Dsonar.python.version=3.11 \
-                            -Dsonar.python.coverage.reportPaths=order-service/coverage.xml
-                    """
-                }
-            }
-        }
-
-        stage('Quality Gate') {
-            steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
-
-        stage('Docker Build') {
-            steps {
-                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    withCredentials([
-                        string(credentialsId: 'aws-access-key-id',
-                               variable: 'AWS_ACCESS_KEY_ID'),
-                        string(credentialsId: 'aws-secret-access-key',
-                               variable: 'AWS_SECRET_ACCESS_KEY')
-                    ]) {
-                        sh """
-                            aws ecr get-login-password \
-                                --region ${AWS_REGION} \
-                            | docker login \
-                                --username AWS \
-                                --password-stdin ${ECR_REGISTRY}
-
-                            docker build \
-                                -t ${USER_SERVICE_IMAGE}:${IMAGE_TAG} \
-                                -f user-service/Dockerfile \
-                                user-service/
-
-                            docker build \
-                                -t ${ORDER_SERVICE_IMAGE}:${IMAGE_TAG} \
-                                -f order-service/Dockerfile \
-                                order-service/
-                        """
+                stage('Test + Coverage') {
+                    parallel {
+                        stage('User Service Tests') {
+                            steps {
+                                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                                    sh """
+                                        . ${VENV}/bin/activate
+                                        pytest user-service/tests \
+                                            --cov=user-service/app \
+                                            --cov-report=xml:user-service/coverage.xml \
+                                            --junitxml=user-service/test-results.xml \
+                                            -q
+                                    """
+                                    junit 'user-service/test-results.xml'
+                                }
+                            }
+                        }
+                        stage('Order Service Tests') {
+                            steps {
+                                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                                    sh """
+                                        . ${VENV}/bin/activate
+                                        pytest order-service/tests \
+                                            --cov=order-service/app \
+                                            --cov-report=xml:order-service/coverage.xml \
+                                            --junitxml=order-service/test-results.xml \
+                                            -q
+                                    """
+                                    junit 'order-service/test-results.xml'
+                                }
+                            }
+                        }
                     }
                 }
-            }
-        }
 
-        stage('Trivy Scan') {
-            steps {
-                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                    sh """
-                        trivy image \
-                            --exit-code 1 \
-                            --severity HIGH,CRITICAL \
-                            --no-progress \
-                            ${USER_SERVICE_IMAGE}:${IMAGE_TAG}
-
-                        trivy image \
-                            --exit-code 1 \
-                            --severity HIGH,CRITICAL \
-                            --no-progress \
-                            ${ORDER_SERVICE_IMAGE}:${IMAGE_TAG}
-                    """
-                }
-            }
-        }
-
-        stage('Push to ECR') {
-            steps {
-                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    withCredentials([
-                        string(credentialsId: 'aws-access-key-id',
-                               variable: 'AWS_ACCESS_KEY_ID'),
-                        string(credentialsId: 'aws-secret-access-key',
-                               variable: 'AWS_SECRET_ACCESS_KEY')
-                    ]) {
-                        sh """
-                            aws ecr get-login-password \
-                                --region ${AWS_REGION} \
-                            | docker login \
-                                --username AWS \
-                                --password-stdin ${ECR_REGISTRY}
-
-                            docker push ${USER_SERVICE_IMAGE}:${IMAGE_TAG}
-                            docker push ${ORDER_SERVICE_IMAGE}:${IMAGE_TAG}
-
-                            docker tag \
-                                ${USER_SERVICE_IMAGE}:${IMAGE_TAG} \
-                                ${USER_SERVICE_IMAGE}:latest
-                            docker tag \
-                                ${ORDER_SERVICE_IMAGE}:${IMAGE_TAG} \
-                                ${ORDER_SERVICE_IMAGE}:latest
-
-                            docker push ${USER_SERVICE_IMAGE}:latest
-                            docker push ${ORDER_SERVICE_IMAGE}:latest
-                        """
+                stage('SonarQube Analysis') {
+                    steps {
+                        withSonarQubeEnv('SonarQube') {
+                            sh """
+                                ${tool 'SonarScanner'}/bin/sonar-scanner \
+                                    -Dsonar.projectKey=user-service \
+                                    -Dsonar.sources=user-service \
+                                    -Dsonar.python.version=3.11 \
+                                    -Dsonar.python.coverage.reportPaths=user-service/coverage.xml
+                            """
+                            sh """
+                                ${tool 'SonarScanner'}/bin/sonar-scanner \
+                                    -Dsonar.projectKey=order-service \
+                                    -Dsonar.sources=order-service \
+                                    -Dsonar.python.version=3.11 \
+                                    -Dsonar.python.coverage.reportPaths=order-service/coverage.xml
+                            """
+                        }
                     }
                 }
+
+                stage('Quality Gate') {
+                    steps {
+                        timeout(time: 5, unit: 'MINUTES') {
+                            waitForQualityGate abortPipeline: true
+                        }
+                    }
+                }
+
+            }
+        }
+
+        stage('Build & Push') {
+            agent { label 'static-agent' }
+            stages {
+
+                stage('Docker Build') {
+                    steps {
+                        unstash 'source-code'
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            withCredentials([
+                                string(credentialsId: 'aws-access-key-id',
+                                       variable: 'AWS_ACCESS_KEY_ID'),
+                                string(credentialsId: 'aws-secret-access-key',
+                                       variable: 'AWS_SECRET_ACCESS_KEY')
+                            ]) {
+                                sh """
+                                    aws ecr get-login-password \
+                                        --region ${AWS_REGION} \
+                                    | docker login \
+                                        --username AWS \
+                                        --password-stdin ${ECR_REGISTRY}
+
+                                    docker build \
+                                        -t ${USER_SERVICE_IMAGE}:${IMAGE_TAG} \
+                                        -f user-service/Dockerfile \
+                                        user-service/
+
+                                    docker build \
+                                        -t ${ORDER_SERVICE_IMAGE}:${IMAGE_TAG} \
+                                        -f order-service/Dockerfile \
+                                        order-service/
+                                """
+                            }
+                        }
+                    }
+                }
+
+                stage('Trivy Scan') {
+                    steps {
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            sh """
+                                trivy image \
+                                    --exit-code 1 \
+                                    --severity HIGH,CRITICAL \
+                                    --no-progress \
+                                    --ignorefile .trivyignore \
+                                    ${USER_SERVICE_IMAGE}:${IMAGE_TAG}
+
+                                trivy image \
+                                    --exit-code 1 \
+                                    --severity HIGH,CRITICAL \
+                                    --no-progress \
+                                    --ignorefile .trivyignore \
+                                    ${ORDER_SERVICE_IMAGE}:${IMAGE_TAG}
+                            """
+                        }
+                    }
+                }
+
+                stage('Push to ECR') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            withCredentials([
+                                string(credentialsId: 'aws-access-key-id',
+                                       variable: 'AWS_ACCESS_KEY_ID'),
+                                string(credentialsId: 'aws-secret-access-key',
+                                       variable: 'AWS_SECRET_ACCESS_KEY')
+                            ]) {
+                                sh """
+                                    aws ecr get-login-password \
+                                        --region ${AWS_REGION} \
+                                    | docker login \
+                                        --username AWS \
+                                        --password-stdin ${ECR_REGISTRY}
+
+                                    docker push ${USER_SERVICE_IMAGE}:${IMAGE_TAG}
+                                    docker push ${ORDER_SERVICE_IMAGE}:${IMAGE_TAG}
+
+                                    docker tag \
+                                        ${USER_SERVICE_IMAGE}:${IMAGE_TAG} \
+                                        ${USER_SERVICE_IMAGE}:latest
+                                    docker tag \
+                                        ${ORDER_SERVICE_IMAGE}:${IMAGE_TAG} \
+                                        ${ORDER_SERVICE_IMAGE}:latest
+
+                                    docker push ${USER_SERVICE_IMAGE}:latest
+                                    docker push ${ORDER_SERVICE_IMAGE}:latest
+                                """
+                            }
+                        }
+                    }
+                }
+
             }
         }
 
     }
 
     post {
-        always {
-            cleanWs()
-        }
-        success {
-            echo 'Build succeeded. Images pushed to ECR.'
-        }
-        failure {
-            echo 'Build failed. Check logs for details.'
-        }
+        always { cleanWs() }
+        success { echo 'Pipeline complete. Images in ECR.' }
+        unstable { echo 'Pipeline unstable. Check Trivy or test results.' }
+        failure { echo 'Pipeline failed. Check logs.' }
     }
-
-} 
+}

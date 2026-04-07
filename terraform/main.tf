@@ -23,8 +23,7 @@ resource "aws_security_group" "agent_sg" {
     to_port     = 22
     protocol    = "tcp"
 
-    # TEMP (you can restrict later)
-    cidr_blocks = ["13.205.252.20/32", "157.50.10.255/32"] # Jenkins master IP and your IP (for testing)
+    cidr_blocks = ["13.205.252.20/32", "157.50.10.255/32"] # Jenkins master IP and my IP (for testing)
   }
 
   egress {
@@ -46,38 +45,54 @@ resource "aws_instance" "jenkins_static_agent" {
 
   user_data = <<-EOF
               #!/bin/bash
-
+              set -e
               apt update -y
 
-              # Install Python & tools
+              # Java
+              apt install -y fontconfig openjdk-17-jre
+
+              # Python
               apt install -y python3 python3-pip python3-venv git
 
-              # Install Java (REQUIRED for Sonar & Jenkins)
-              apt install -y openjdk-17-jdk
-
-              # Set JAVA_HOME (important)
-              echo "export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> /etc/profile
-              echo "export PATH=\$PATH:\$JAVA_HOME/bin" >> /etc/profile
-
-              # Install Docker
+              # Docker
               apt install -y docker.io
+              systemctl start docker
+              systemctl enable docker
               usermod -aG docker ubuntu
 
-              # Install AWS CLI
-              apt install -y awscli
+              # AWS CLI v2 — correct method
+              apt install -y curl unzip
+              curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
+                -o "/tmp/awscliv2.zip"
+              unzip /tmp/awscliv2.zip -d /tmp/
+              /tmp/aws/install
+              rm -rf /tmp/awscliv2.zip /tmp/aws/
 
-              # Install Trivy
-              apt install -y wget apt-transport-https gnupg lsb-release
-              wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -
-              echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | tee -a /etc/apt/sources.list.d/trivy.list
+              # Trivy
+              apt install -y wget apt-transport-https gnupg
+              wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
+                | gpg --dearmor -o /usr/share/keyrings/trivy.gpg
+              echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] \
+                https://aquasecurity.github.io/trivy-repo/deb generic main" \
+                | tee /etc/apt/sources.list.d/trivy.list
               apt update -y
               apt install -y trivy
 
-              # Install Sonar Scanner
-              apt install -y unzip
-              wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
-              unzip sonar-scanner-cli-*.zip -d /opt/
-              ln -s /opt/sonar-scanner-*/bin/sonar-scanner /usr/local/bin/sonar-scanner
+              # SonarScanner
+              apt install -y unzip wget
+              wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip \
+                -O /tmp/sonar-scanner.zip
+              unzip /tmp/sonar-scanner.zip -d /opt/
+              ln -sf /opt/sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner \
+                /usr/local/bin/sonar-scanner
+              rm /tmp/sonar-scanner.zip
 
-              EOF
+              # Swap
+              fallocate -l 2G /swapfile
+              chmod 600 /swapfile
+              mkswap /swapfile
+              swapon /swapfile
+              echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
+            EOF
 }
