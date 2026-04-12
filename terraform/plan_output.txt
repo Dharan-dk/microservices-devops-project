@@ -1,0 +1,474 @@
+[0m[1mmodule.jenkins_agent.data.aws_ami.ubuntu: Reading...[0m[0m
+[0m[1mmodule.vpc.aws_eip.nat_eip[0]: Refreshing state... [id=eipalloc-0b547a88f3dfb9b93][0m
+[0m[1mmodule.vpc.aws_vpc.cloudmart_vpc: Refreshing state... [id=vpc-0d144e5baeff262d2][0m
+[0m[1mmodule.jenkins_agent.data.aws_ami.ubuntu: Read complete after 1s [id=ami-0f11fb0f6d8b520d4][0m
+[0m[1mmodule.vpc.aws_internet_gateway.cloudmart_igw: Refreshing state... [id=igw-078b79c2c408c97ac][0m
+[0m[1mmodule.vpc.aws_subnet.private_subnets[0]: Refreshing state... [id=subnet-03b328a4bd2fe8a6a][0m
+[0m[1mmodule.jenkins_agent.aws_security_group.agent_sg: Refreshing state... [id=sg-038039103443fd0c0][0m
+[0m[1mmodule.vpc.aws_subnet.private_subnets[1]: Refreshing state... [id=subnet-00c1e978a8a5877dc][0m
+[0m[1mmodule.vpc.aws_subnet.public_subnets[0]: Refreshing state... [id=subnet-0acaaf92f1bc53e35][0m
+[0m[1mmodule.vpc.aws_subnet.public_subnets[1]: Refreshing state... [id=subnet-019ced10a54ceb16a][0m
+[0m[1mmodule.vpc.aws_route_table.public_rt: Refreshing state... [id=rtb-0e1af3d5eaff1f283][0m
+[0m[1mmodule.vpc.aws_route_table_association.public_rt_assoc[1]: Refreshing state... [id=rtbassoc-0f04212171285782f][0m
+[0m[1mmodule.vpc.aws_route_table_association.public_rt_assoc[0]: Refreshing state... [id=rtbassoc-057691418a2e48854][0m
+[0m[1mmodule.vpc.aws_nat_gateway.nat_gw[0]: Refreshing state... [id=nat-0365b8a374583a78e][0m
+[0m[1mmodule.jenkins_agent.aws_instance.jenkins_static_agent: Refreshing state... [id=i-074242be586d5391b][0m
+[0m[1mmodule.vpc.aws_route_table.private_rt: Refreshing state... [id=rtb-0d266149ba65298f6][0m
+[0m[1mmodule.vpc.aws_route_table_association.private_rt_assoc[0]: Refreshing state... [id=rtbassoc-047a9371e4bb4534b][0m
+[0m[1mmodule.vpc.aws_route_table_association.private_rt_assoc[1]: Refreshing state... [id=rtbassoc-01592e085a4fce29e][0m
+
+[1m[36mNote:[0m[1m Objects have changed outside of Terraform
+[0m
+Terraform detected the following changes made outside of Terraform since the
+last "terraform apply" which may have affected this plan:
+
+[1m  # module.jenkins_agent.aws_instance.jenkins_static_agent[0m has changed
+[0m  [33m~[0m[0m resource "aws_instance" "jenkins_static_agent" {
+        id                                   = "i-074242be586d5391b"
+      [33m~[0m[0m public_ip                            = "13.206.120.32" [33m->[0m[0m "65.2.62.113"
+        [90m# (39 unchanged attributes hidden)[0m[0m
+
+        [90m# (7 unchanged blocks hidden)[0m[0m
+    }
+
+
+Unless you have made equivalent changes to your configuration, or ignored the
+relevant attributes using ignore_changes, the following plan may include
+actions to undo or respond to these changes.
+[90m
+─────────────────────────────────────────────────────────────────────────────[0m
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  [32m+[0m create[0m
+  [33m~[0m update in-place[0m
+ [36m<=[0m read (data resources)[0m
+
+Terraform will perform the following actions:
+
+[1m  # module.eks.data.tls_certificate.eks[0m will be read during apply
+  # (config refers to values not yet known)
+[0m [36m<=[0m[0m data "tls_certificate" "eks" {
+      [32m+[0m[0m certificates = (known after apply)
+      [32m+[0m[0m id           = (known after apply)
+      [32m+[0m[0m url          = (known after apply)
+    }
+
+[1m  # module.eks.aws_eks_cluster.main[0m will be created
+[0m  [32m+[0m[0m resource "aws_eks_cluster" "main" {
+      [32m+[0m[0m arn                           = (known after apply)
+      [32m+[0m[0m bootstrap_self_managed_addons = true
+      [32m+[0m[0m certificate_authority         = (known after apply)
+      [32m+[0m[0m cluster_id                    = (known after apply)
+      [32m+[0m[0m created_at                    = (known after apply)
+      [32m+[0m[0m enabled_cluster_log_types     = [
+          [32m+[0m[0m "api",
+          [32m+[0m[0m "audit",
+          [32m+[0m[0m "authenticator",
+          [32m+[0m[0m "controllerManager",
+          [32m+[0m[0m "scheduler",
+        ]
+      [32m+[0m[0m endpoint                      = (known after apply)
+      [32m+[0m[0m id                            = (known after apply)
+      [32m+[0m[0m identity                      = (known after apply)
+      [32m+[0m[0m name                          = "cloudmart-eks-cluster"
+      [32m+[0m[0m platform_version              = (known after apply)
+      [32m+[0m[0m role_arn                      = (known after apply)
+      [32m+[0m[0m status                        = (known after apply)
+      [32m+[0m[0m tags                          = {
+          [32m+[0m[0m "Environment" = "dev"
+          [32m+[0m[0m "Name"        = "cloudmart-eks-cluster"
+          [32m+[0m[0m "Owner"       = "dharan"
+          [32m+[0m[0m "Project"     = "cloudmart"
+        }
+      [32m+[0m[0m tags_all                      = {
+          [32m+[0m[0m "Environment" = "dev"
+          [32m+[0m[0m "Name"        = "cloudmart-eks-cluster"
+          [32m+[0m[0m "Owner"       = "dharan"
+          [32m+[0m[0m "Project"     = "cloudmart"
+        }
+      [32m+[0m[0m version                       = "1.29"
+
+      [32m+[0m[0m access_config (known after apply)
+
+      [32m+[0m[0m kubernetes_network_config (known after apply)
+
+      [32m+[0m[0m upgrade_policy (known after apply)
+
+      [32m+[0m[0m vpc_config {
+          [32m+[0m[0m cluster_security_group_id = (known after apply)
+          [32m+[0m[0m endpoint_private_access   = true
+          [32m+[0m[0m endpoint_public_access    = true
+          [32m+[0m[0m public_access_cidrs       = (known after apply)
+          [32m+[0m[0m subnet_ids                = [
+              [32m+[0m[0m "subnet-00c1e978a8a5877dc",
+              [32m+[0m[0m "subnet-019ced10a54ceb16a",
+              [32m+[0m[0m "subnet-03b328a4bd2fe8a6a",
+              [32m+[0m[0m "subnet-0acaaf92f1bc53e35",
+            ]
+          [32m+[0m[0m vpc_id                    = (known after apply)
+        }
+    }
+
+[1m  # module.eks.aws_eks_node_group.main[0m will be created
+[0m  [32m+[0m[0m resource "aws_eks_node_group" "main" {
+      [32m+[0m[0m ami_type               = (known after apply)
+      [32m+[0m[0m arn                    = (known after apply)
+      [32m+[0m[0m capacity_type          = "ON_DEMAND"
+      [32m+[0m[0m cluster_name           = "cloudmart-eks-cluster"
+      [32m+[0m[0m disk_size              = (known after apply)
+      [32m+[0m[0m id                     = (known after apply)
+      [32m+[0m[0m instance_types         = [
+          [32m+[0m[0m "c7i-flex.large",
+        ]
+      [32m+[0m[0m node_group_name        = "cloudmart-node-group"
+      [32m+[0m[0m node_group_name_prefix = (known after apply)
+      [32m+[0m[0m node_role_arn          = (known after apply)
+      [32m+[0m[0m release_version        = (known after apply)
+      [32m+[0m[0m resources              = (known after apply)
+      [32m+[0m[0m status                 = (known after apply)
+      [32m+[0m[0m subnet_ids             = [
+          [32m+[0m[0m "subnet-00c1e978a8a5877dc",
+          [32m+[0m[0m "subnet-03b328a4bd2fe8a6a",
+        ]
+      [32m+[0m[0m tags                   = {
+          [32m+[0m[0m "Environment" = "dev"
+          [32m+[0m[0m "Name"        = "cloudmart-node-group"
+          [32m+[0m[0m "Owner"       = "dharan"
+          [32m+[0m[0m "Project"     = "cloudmart"
+        }
+      [32m+[0m[0m tags_all               = {
+          [32m+[0m[0m "Environment" = "dev"
+          [32m+[0m[0m "Name"        = "cloudmart-node-group"
+          [32m+[0m[0m "Owner"       = "dharan"
+          [32m+[0m[0m "Project"     = "cloudmart"
+        }
+      [32m+[0m[0m version                = "1.29"
+
+      [32m+[0m[0m launch_template {
+          [32m+[0m[0m id      = (known after apply)
+          [32m+[0m[0m name    = (known after apply)
+          [32m+[0m[0m version = "$Latest"
+        }
+
+      [32m+[0m[0m node_repair_config (known after apply)
+
+      [32m+[0m[0m scaling_config {
+          [32m+[0m[0m desired_size = 2
+          [32m+[0m[0m max_size     = 4
+          [32m+[0m[0m min_size     = 1
+        }
+
+      [32m+[0m[0m update_config (known after apply)
+    }
+
+[1m  # module.eks.aws_iam_openid_connect_provider.eks[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_openid_connect_provider" "eks" {
+      [32m+[0m[0m arn             = (known after apply)
+      [32m+[0m[0m client_id_list  = [
+          [32m+[0m[0m "sts.amazonaws.com",
+        ]
+      [32m+[0m[0m id              = (known after apply)
+      [32m+[0m[0m tags            = {
+          [32m+[0m[0m "Environment" = "dev"
+          [32m+[0m[0m "Name"        = "cloudmart-dev-eks-irsa"
+          [32m+[0m[0m "Owner"       = "dharan"
+          [32m+[0m[0m "Project"     = "cloudmart"
+        }
+      [32m+[0m[0m tags_all        = {
+          [32m+[0m[0m "Environment" = "dev"
+          [32m+[0m[0m "Name"        = "cloudmart-dev-eks-irsa"
+          [32m+[0m[0m "Owner"       = "dharan"
+          [32m+[0m[0m "Project"     = "cloudmart"
+        }
+      [32m+[0m[0m thumbprint_list = (known after apply)
+      [32m+[0m[0m url             = (known after apply)
+    }
+
+[1m  # module.eks.aws_iam_role.eks_cluster_role[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_role" "eks_cluster_role" {
+      [32m+[0m[0m arn                   = (known after apply)
+      [32m+[0m[0m assume_role_policy    = jsonencode(
+            {
+              [32m+[0m[0m Statement = [
+                  [32m+[0m[0m {
+                      [32m+[0m[0m Action    = "sts:AssumeRole"
+                      [32m+[0m[0m Effect    = "Allow"
+                      [32m+[0m[0m Principal = {
+                          [32m+[0m[0m Service = "eks.amazonaws.com"
+                        }
+                    },
+                ]
+              [32m+[0m[0m Version   = "2012-10-17"
+            }
+        )
+      [32m+[0m[0m create_date           = (known after apply)
+      [32m+[0m[0m force_detach_policies = false
+      [32m+[0m[0m id                    = (known after apply)
+      [32m+[0m[0m managed_policy_arns   = (known after apply)
+      [32m+[0m[0m max_session_duration  = 3600
+      [32m+[0m[0m name                  = "cloudmart-dev-eks-cluster-role"
+      [32m+[0m[0m name_prefix           = (known after apply)
+      [32m+[0m[0m path                  = "/"
+      [32m+[0m[0m tags                  = {
+          [32m+[0m[0m "Environment" = "dev"
+          [32m+[0m[0m "Name"        = "cloudmart-dev-eks-cluster-role"
+          [32m+[0m[0m "Owner"       = "dharan"
+          [32m+[0m[0m "Project"     = "cloudmart"
+        }
+      [32m+[0m[0m tags_all              = {
+          [32m+[0m[0m "Environment" = "dev"
+          [32m+[0m[0m "Name"        = "cloudmart-dev-eks-cluster-role"
+          [32m+[0m[0m "Owner"       = "dharan"
+          [32m+[0m[0m "Project"     = "cloudmart"
+        }
+      [32m+[0m[0m unique_id             = (known after apply)
+
+      [32m+[0m[0m inline_policy (known after apply)
+    }
+
+[1m  # module.eks.aws_iam_role.eks_node_role[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_role" "eks_node_role" {
+      [32m+[0m[0m arn                   = (known after apply)
+      [32m+[0m[0m assume_role_policy    = jsonencode(
+            {
+              [32m+[0m[0m Statement = [
+                  [32m+[0m[0m {
+                      [32m+[0m[0m Action    = "sts:AssumeRole"
+                      [32m+[0m[0m Effect    = "Allow"
+                      [32m+[0m[0m Principal = {
+                          [32m+[0m[0m Service = "ec2.amazonaws.com"
+                        }
+                    },
+                ]
+              [32m+[0m[0m Version   = "2012-10-17"
+            }
+        )
+      [32m+[0m[0m create_date           = (known after apply)
+      [32m+[0m[0m force_detach_policies = false
+      [32m+[0m[0m id                    = (known after apply)
+      [32m+[0m[0m managed_policy_arns   = (known after apply)
+      [32m+[0m[0m max_session_duration  = 3600
+      [32m+[0m[0m name                  = "cloudmart-dev-eks-node-role"
+      [32m+[0m[0m name_prefix           = (known after apply)
+      [32m+[0m[0m path                  = "/"
+      [32m+[0m[0m tags                  = {
+          [32m+[0m[0m "Environment" = "dev"
+          [32m+[0m[0m "Name"        = "cloudmart-dev-eks-node-role"
+          [32m+[0m[0m "Owner"       = "dharan"
+          [32m+[0m[0m "Project"     = "cloudmart"
+        }
+      [32m+[0m[0m tags_all              = {
+          [32m+[0m[0m "Environment" = "dev"
+          [32m+[0m[0m "Name"        = "cloudmart-dev-eks-node-role"
+          [32m+[0m[0m "Owner"       = "dharan"
+          [32m+[0m[0m "Project"     = "cloudmart"
+        }
+      [32m+[0m[0m unique_id             = (known after apply)
+
+      [32m+[0m[0m inline_policy (known after apply)
+    }
+
+[1m  # module.eks.aws_iam_role_policy_attachment.eks_cloudwatch_logs_policy[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_role_policy_attachment" "eks_cloudwatch_logs_policy" {
+      [32m+[0m[0m id         = (known after apply)
+      [32m+[0m[0m policy_arn = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+      [32m+[0m[0m role       = "cloudmart-dev-eks-node-role"
+    }
+
+[1m  # module.eks.aws_iam_role_policy_attachment.eks_cluster_policy[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+      [32m+[0m[0m id         = (known after apply)
+      [32m+[0m[0m policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+      [32m+[0m[0m role       = "cloudmart-dev-eks-cluster-role"
+    }
+
+[1m  # module.eks.aws_iam_role_policy_attachment.eks_cni_policy[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
+      [32m+[0m[0m id         = (known after apply)
+      [32m+[0m[0m policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+      [32m+[0m[0m role       = "cloudmart-dev-eks-node-role"
+    }
+
+[1m  # module.eks.aws_iam_role_policy_attachment.eks_container_registry_policy[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_role_policy_attachment" "eks_container_registry_policy" {
+      [32m+[0m[0m id         = (known after apply)
+      [32m+[0m[0m policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+      [32m+[0m[0m role       = "cloudmart-dev-eks-node-role"
+    }
+
+[1m  # module.eks.aws_iam_role_policy_attachment.eks_vpc_resource_controller[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_role_policy_attachment" "eks_vpc_resource_controller" {
+      [32m+[0m[0m id         = (known after apply)
+      [32m+[0m[0m policy_arn = "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
+      [32m+[0m[0m role       = "cloudmart-dev-eks-cluster-role"
+    }
+
+[1m  # module.eks.aws_iam_role_policy_attachment.eks_worker_node_policy[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_role_policy_attachment" "eks_worker_node_policy" {
+      [32m+[0m[0m id         = (known after apply)
+      [32m+[0m[0m policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+      [32m+[0m[0m role       = "cloudmart-dev-eks-node-role"
+    }
+
+[1m  # module.eks.aws_launch_template.eks_node[0m will be created
+[0m  [32m+[0m[0m resource "aws_launch_template" "eks_node" {
+      [32m+[0m[0m arn             = (known after apply)
+      [32m+[0m[0m default_version = (known after apply)
+      [32m+[0m[0m description     = "Launch template for EKS nodes"
+      [32m+[0m[0m id              = (known after apply)
+      [32m+[0m[0m latest_version  = (known after apply)
+      [32m+[0m[0m name            = (known after apply)
+      [32m+[0m[0m name_prefix     = "cloudmart-dev-eks-"
+      [32m+[0m[0m tags_all        = (known after apply)
+      [32m+[0m[0m user_data       = "IyEvYmluL2Jhc2gKIyBFS1MgTm9kZSBVc2VyIERhdGEKIyBUaGlzIHJ1bnMgb24gZXZlcnkgRUtTIG5vZGUgYXQgYm9vdCB0aW1lCgpzZXQgLWUKCiMgVXBkYXRlIHN5c3RlbQphcHQtZ2V0IHVwZGF0ZSAteQphcHQtZ2V0IHVwZ3JhZGUgLXkKCiMgSW5zdGFsbCBDbG91ZFdhdGNoIGFnZW50IChvcHRpb25hbCkKIyB3Z2V0IGh0dHBzOi8vczMuYW1hem9uYXdzLmNvbS9hbWF6b25jbG91ZHdhdGNoLWFnZW50L3VidW50dS9hbWQ2NC9sYXRlc3QvYW1hem9uLWNsb3Vkd2F0Y2gtYWdlbnQuZGViCiMgZHBrZyAtaSAtRSAuL2FtYXpvbi1jbG91ZHdhdGNoLWFnZW50LmRlYgoKZWNobyAiRUtTIE5vZGUgaW5pdGlhbGl6YXRpb24gY29tcGxldGUiCg=="
+
+      [32m+[0m[0m block_device_mappings {
+          [32m+[0m[0m device_name = "/dev/xvda"
+
+          [32m+[0m[0m ebs {
+              [32m+[0m[0m delete_on_termination      = "true"
+              [32m+[0m[0m encrypted                  = "true"
+              [32m+[0m[0m iops                       = (known after apply)
+              [32m+[0m[0m throughput                 = (known after apply)
+              [32m+[0m[0m volume_initialization_rate = (known after apply)
+              [32m+[0m[0m volume_size                = 50
+              [32m+[0m[0m volume_type                = "gp3"
+            }
+        }
+
+      [32m+[0m[0m metadata_options {
+          [32m+[0m[0m http_endpoint               = "enabled"
+          [32m+[0m[0m http_protocol_ipv6          = (known after apply)
+          [32m+[0m[0m http_put_response_hop_limit = 2
+          [32m+[0m[0m http_tokens                 = "required"
+          [32m+[0m[0m instance_metadata_tags      = (known after apply)
+        }
+
+      [32m+[0m[0m monitoring {
+          [32m+[0m[0m enabled = true
+        }
+
+      [32m+[0m[0m network_interfaces {
+          [32m+[0m[0m associate_public_ip_address = "false"
+          [32m+[0m[0m security_groups             = (known after apply)
+        }
+
+      [32m+[0m[0m tag_specifications {
+          [32m+[0m[0m resource_type = "instance"
+          [32m+[0m[0m tags          = {
+              [32m+[0m[0m "Environment" = "dev"
+              [32m+[0m[0m "Name"        = "cloudmart-dev-eks-node"
+              [32m+[0m[0m "Owner"       = "dharan"
+              [32m+[0m[0m "Project"     = "cloudmart"
+            }
+        }
+      [32m+[0m[0m tag_specifications {
+          [32m+[0m[0m resource_type = "volume"
+          [32m+[0m[0m tags          = {
+              [32m+[0m[0m "Environment" = "dev"
+              [32m+[0m[0m "Name"        = "cloudmart-dev-eks-node-volume"
+              [32m+[0m[0m "Owner"       = "dharan"
+              [32m+[0m[0m "Project"     = "cloudmart"
+            }
+        }
+    }
+
+[1m  # module.eks.aws_security_group.eks_node_sg[0m will be created
+[0m  [32m+[0m[0m resource "aws_security_group" "eks_node_sg" {
+      [32m+[0m[0m arn                    = (known after apply)
+      [32m+[0m[0m description            = "Security group for EKS node group"
+      [32m+[0m[0m egress                 = [
+          [32m+[0m[0m {
+              [32m+[0m[0m cidr_blocks      = [
+                  [32m+[0m[0m "0.0.0.0/0",
+                ]
+              [32m+[0m[0m description      = "Allow all outbound traffic"
+              [32m+[0m[0m from_port        = 0
+              [32m+[0m[0m ipv6_cidr_blocks = []
+              [32m+[0m[0m prefix_list_ids  = []
+              [32m+[0m[0m protocol         = "-1"
+              [32m+[0m[0m security_groups  = []
+              [32m+[0m[0m self             = false
+              [32m+[0m[0m to_port          = 0
+            },
+        ]
+      [32m+[0m[0m id                     = (known after apply)
+      [32m+[0m[0m ingress                = [
+          [32m+[0m[0m {
+              [32m+[0m[0m cidr_blocks      = [
+                  [32m+[0m[0m "13.205.252.20/32",
+                  [32m+[0m[0m "157.50.10.255/32",
+                ]
+              [32m+[0m[0m description      = "SSH access"
+              [32m+[0m[0m from_port        = 22
+              [32m+[0m[0m ipv6_cidr_blocks = []
+              [32m+[0m[0m prefix_list_ids  = []
+              [32m+[0m[0m protocol         = "tcp"
+              [32m+[0m[0m security_groups  = []
+              [32m+[0m[0m self             = false
+              [32m+[0m[0m to_port          = 22
+            },
+          [32m+[0m[0m {
+              [32m+[0m[0m cidr_blocks      = []
+              [32m+[0m[0m description      = "Node to node communication"
+              [32m+[0m[0m from_port        = 0
+              [32m+[0m[0m ipv6_cidr_blocks = []
+              [32m+[0m[0m prefix_list_ids  = []
+              [32m+[0m[0m protocol         = "tcp"
+              [32m+[0m[0m security_groups  = []
+              [32m+[0m[0m self             = true
+              [32m+[0m[0m to_port          = 65535
+            },
+        ]
+      [32m+[0m[0m name                   = "cloudmart-dev-eks-node-sg"
+      [32m+[0m[0m name_prefix            = (known after apply)
+      [32m+[0m[0m owner_id               = (known after apply)
+      [32m+[0m[0m revoke_rules_on_delete = false
+      [32m+[0m[0m tags                   = {
+          [32m+[0m[0m "Environment" = "dev"
+          [32m+[0m[0m "Name"        = "cloudmart-dev-eks-node-sg"
+          [32m+[0m[0m "Owner"       = "dharan"
+          [32m+[0m[0m "Project"     = "cloudmart"
+        }
+      [32m+[0m[0m tags_all               = {
+          [32m+[0m[0m "Environment" = "dev"
+          [32m+[0m[0m "Name"        = "cloudmart-dev-eks-node-sg"
+          [32m+[0m[0m "Owner"       = "dharan"
+          [32m+[0m[0m "Project"     = "cloudmart"
+        }
+      [32m+[0m[0m vpc_id                 = "vpc-0d144e5baeff262d2"
+    }
+
+[1m  # module.jenkins_agent.aws_instance.jenkins_static_agent[0m will be updated in-place
+[0m  [33m~[0m[0m resource "aws_instance" "jenkins_static_agent" {
+        id                                   = "i-074242be586d5391b"
+      [33m~[0m[0m tags                                 = {
+          [31m-[0m[0m "Name" = "Jenkins_static_agent" [90m-> null[0m[0m
+        }
+      [33m~[0m[0m tags_all                             = {
+          [31m-[0m[0m "Name" = "Jenkins_static_agent" [90m-> null[0m[0m
+        }
+        [90m# (39 unchanged attributes hidden)[0m[0m
+
+        [90m# (7 unchanged blocks hidden)[0m[0m
+    }
+
+[1mPlan:[0m [0m13 to add, 1 to change, 0 to destroy.
+
+Changes to Outputs:
+  [33m~[0m[0m agent_public_ip            = "13.206.120.32" [33m->[0m[0m "65.2.62.113"
+  [32m+[0m[0m eks_cluster_arn            = (known after apply)
+  [32m+[0m[0m eks_cluster_endpoint       = (known after apply)
+  [32m+[0m[0m eks_cluster_id             = (known after apply)
+  [32m+[0m[0m eks_cluster_name           = "cloudmart-eks-cluster"
+  [32m+[0m[0m eks_cluster_version        = "1.29"
+  [32m+[0m[0m eks_configure_kubectl      = "aws eks update-kubeconfig --region ap-south-1 --name cloudmart-eks-cluster"
+  [32m+[0m[0m eks_node_group_id          = (known after apply)
+  [32m+[0m[0m eks_node_security_group_id = (known after apply)
+  [32m+[0m[0m oidc_provider_arn          = (known after apply)
+[90m
+─────────────────────────────────────────────────────────────────────────────[0m
+
+Note: You didn't use the -out option to save this plan, so Terraform can't
+guarantee to take exactly these actions if you run "terraform apply" now.
