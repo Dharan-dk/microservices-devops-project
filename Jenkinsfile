@@ -9,6 +9,7 @@ pipeline {
         USER_SERVICE_IMAGE  = "${ECR_REGISTRY}/cloudmart-user-service"
         ORDER_SERVICE_IMAGE = "${ECR_REGISTRY}/cloudmart-order-service"
         IMAGE_TAG           = "${BUILD_NUMBER}"
+        EKS_CLUSTER_NAME    = "cloudmart-eks-cluster"
     }
 
     options {
@@ -23,12 +24,13 @@ pipeline {
             steps {
                 echo "Checking out on: ${env.NODE_NAME}"
                 checkout scm
-
                 stash(
                     name: 'source-code',
                     includes: '''
                         user-service/**,
                         order-service/**,
+                        k8s/**,
+                        .trivyignore,
                         Jenkinsfile,
                         sonar-project.properties
                     '''
@@ -130,7 +132,6 @@ pipeline {
                         }
                     }
                 }
-
             }
         }
 
@@ -225,10 +226,81 @@ pipeline {
                         }
                     }
                 }
-
             }
         }
 
+        // ── CD STAGES — Separate from CI ─────────────────────────
+        stage('Deploy to EKS') {
+            agent { label 'static-agent' }
+            steps {
+                unstash 'source-code'
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id',
+                               variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key',
+                               variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
+                        sh """
+                            # Configure kubectl for this build
+                            aws eks update-kubeconfig \
+                                --region ${AWS_REGION} \
+                                --name ${EKS_CLUSTER_NAME}
+
+                            # Create namespace if not exists
+                            kubectl apply -f k8s/namespace.yaml
+
+                            # Deploy user-service with current build tag
+                            export IMAGE_TAG=${IMAGE_TAG}
+                            export ECR_REGISTRY=${ECR_REGISTRY}
+
+                            envsubst < k8s/user-service/deployment.yaml \
+                                | kubectl apply -f -
+                            kubectl apply -f k8s/user-service/service.yaml
+
+                            # Deploy order-service with current build tag
+                            envsubst < k8s/order-service/deployment.yaml \
+                                | kubectl apply -f -
+                            kubectl apply -f k8s/order-service/service.yaml
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            agent { label 'static-agent' }
+            steps {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id',
+                               variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key',
+                               variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
+                        sh """
+                            aws eks update-kubeconfig \
+                                --region ${AWS_REGION} \
+                                --name ${EKS_CLUSTER_NAME}
+
+                            # Wait for rollout to complete
+                            kubectl rollout status deployment/user-service \
+                                -n cloudmart --timeout=300s
+
+                            kubectl rollout status deployment/order-service \
+                                -n cloudmart --timeout=300s
+
+                            # Show final status
+                            echo "=== Pods ==="
+                            kubectl get pods -n cloudmart
+
+                            echo "=== Services (LoadBalancer URLs) ==="
+                            kubectl get svc -n cloudmart
+                        """
+                    }
+                }
+            }
+        }
     }
 
     post {
@@ -237,13 +309,14 @@ pipeline {
                 cleanWs()
             }
         }
-
         success {
-            echo 'Build succeeded and passed SonarQube quality gate. Artifacts pushed to ECR.'
+            echo 'Build succeeded. Images in ECR. App deployed to EKS.'
         }
-
+        unstable {
+            echo 'Build unstable. Check Trivy or test results.'
+        }
         failure {
-            echo 'Build failed or did not pass quality gate. Please check the logs for details.'
+            echo 'Build failed. Check logs for details.'
         }
     }
 }
