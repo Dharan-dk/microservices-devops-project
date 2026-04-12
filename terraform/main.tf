@@ -1,98 +1,50 @@
-data "aws_ami" "ubuntu" {
-  most_recent = true
-  owners      = ["099720109477"]
+module "vpc" {
+  source = "./modules/vpc"
 
-  filter {
-    name   = "name"
-    values = ["*ubuntu*24.04*amd64*server*"]
-  }
+  project_name       = "cloudmart"
+  environment        = "dev"
+  enable_nat_gateway = true
+}
 
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
+module "jenkins_agent" {
+  source = "./modules/static-agent"
+
+  key_name            = "Root_EKS"
+  instance_type       = "c7i-flex.large"
+  associate_public_ip = true
+  vpc_id              = module.vpc.vpc_id
+  subnet_id           = module.vpc.public_subnet_ids[0]
+  allowed_ssh_cidrs   = ["13.205.252.20/32", "157.50.10.255/32"]
+
+  tags = {
+    Environment = "dev"
+    Project     = "cloudmart"
+    Owner       = "dharan"
   }
 }
 
-resource "aws_security_group" "agent_sg" {
-  name        = "jenkins-agent-sg"
-  description = "Allow SSH access for Jenkins agent"
+module "eks" {
+  source = "./modules/eks"
 
-  ingress {
-    description = "SSH access"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
+  cluster_name        = "cloudmart-eks-cluster"
+  cluster_version     = "1.29"
+  environment         = "dev"
+  project_name        = "cloudmart"
+  vpc_id              = module.vpc.vpc_id
+  private_subnet_ids  = module.vpc.private_subnet_ids
+  public_subnet_ids   = module.vpc.public_subnet_ids
+  node_group_name     = "cloudmart-node-group"
+  node_instance_types = ["c7i-flex.large"]
+  desired_size        = 2
+  min_size            = 1
+  max_size            = 4
+  disk_size           = 50
+  key_name            = "Root_EKS"
+  allowed_ssh_cidrs   = ["13.205.252.20/32", "157.50.10.255/32"]
 
-    cidr_blocks = ["13.205.252.20/32", "157.50.10.255/32"] # Jenkins master IP and my IP (for testing)
+  tags = {
+    Environment = "dev"
+    Project     = "cloudmart"
+    Owner       = "dharan"
   }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = var.tags
-}
-
-resource "aws_instance" "jenkins_static_agent" {
-  ami                         = data.aws_ami.ubuntu.id
-  instance_type               = var.instance_type
-  key_name                    = var.key_name
-  vpc_security_group_ids      = [aws_security_group.agent_sg.id]
-  associate_public_ip_address = var.associate_public_ip
-
-  user_data = <<-EOF
-              #!/bin/bash
-              set -e
-              apt update -y
-
-              # Java
-              apt install -y fontconfig openjdk-17-jre
-
-              # Python
-              apt install -y python3 python3-pip python3-venv git
-
-              # Docker
-              apt install -y docker.io
-              systemctl start docker
-              systemctl enable docker
-              usermod -aG docker ubuntu
-
-              # AWS CLI v2 — correct method
-              apt install -y curl unzip
-              curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
-                -o "/tmp/awscliv2.zip"
-              unzip /tmp/awscliv2.zip -d /tmp/
-              /tmp/aws/install
-              rm -rf /tmp/awscliv2.zip /tmp/aws/
-
-              # Trivy
-              apt install -y wget apt-transport-https gnupg
-              wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
-                | gpg --dearmor -o /usr/share/keyrings/trivy.gpg
-              echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] \
-                https://aquasecurity.github.io/trivy-repo/deb generic main" \
-                | tee /etc/apt/sources.list.d/trivy.list
-              apt update -y
-              apt install -y trivy
-
-              # SonarScanner
-              apt install -y unzip wget
-              wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip \
-                -O /tmp/sonar-scanner.zip
-              unzip /tmp/sonar-scanner.zip -d /opt/
-              ln -sf /opt/sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner \
-                /usr/local/bin/sonar-scanner
-              rm /tmp/sonar-scanner.zip
-
-              # Swap
-              fallocate -l 2G /swapfile
-              chmod 600 /swapfile
-              mkswap /swapfile
-              swapon /swapfile
-              echo '/swapfile none swap sw 0 0' >> /etc/fstab
-
-            EOF
 }
