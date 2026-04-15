@@ -5,13 +5,14 @@ metadata:
   namespace: cloudmart
   labels:
     app: user-service
-    component: backend
-    managed-by: jenkins
 spec:
+  # ClusterIP: internal only — ALB routes to pods directly via target-type: ip
+  # No more AWS LoadBalancer per service (saves cost)
+  type: ClusterIP
   selector:
     app: user-service
   ports:
-    - protocol: TCP
+    - name: http
+      protocol: TCP
       port: 80
       targetPort: 8000
-  type: LoadBalancer
