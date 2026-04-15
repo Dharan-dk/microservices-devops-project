@@ -41,3 +41,21 @@ variable "allowed_ssh_cidrs" {
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
+
+variable "custom_ami_id" {
+  description = "Custom AMI ID with pre-installed tools (Jenkins agent, Docker, AWS CLI, Trivy, SonarScanner). If not provided, uses latest Ubuntu 24.04"
+  type        = string
+  default     = ""
+}
+
+variable "elastic_ip_allocation_id" {
+  description = "Allocation ID of the Elastic IP to associate with the instance"
+  type        = string
+  default     = ""
+}
+
+variable "use_custom_ami" {
+  description = "Whether to use custom AMI (true) or latest Ubuntu with user_data (false)"
+  type        = bool
+  default     = true
+}

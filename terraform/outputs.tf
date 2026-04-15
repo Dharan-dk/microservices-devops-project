@@ -71,11 +71,6 @@ output "eks_node_group_id" {
   value       = module.eks.node_group_id
 }
 
-output "eks_node_security_group_id" {
-  description = "Security group ID of the EKS node group"
-  value       = module.eks.node_security_group_id
-}
-
 output "eks_configure_kubectl" {
   description = "Configure kubectl command"
   value       = module.eks.configure_kubectl
