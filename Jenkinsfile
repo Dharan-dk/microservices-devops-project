@@ -231,7 +231,7 @@ pipeline {
             }
         }
 
-        // ── CD STAGES ─────────────────────────────────────────────
+        // ── DEPLOY TO EKS ─────────────────────────────────────────
         stage('Deploy to EKS') {
             agent { label 'static-agent' }
             steps {
@@ -248,23 +248,30 @@ pipeline {
                             aws eks update-kubeconfig \
                                 --region ${AWS_REGION} \
                                 --name ${EKS_CLUSTER_NAME}
-
+ 
                             # ── 2. Namespace ───────────────────────────────────
                             kubectl apply -f k8s/namespace.yaml
-
+ 
                             # ── 3. Install Metrics Server (required for HPA) ───
-                            # idempotent: apply is safe to re-run every build
                             kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-
+ 
                             # ── 4. Install AWS Load Balancer Controller ────────
-                            # Apply IRSA service account first
                             kubectl apply -f k8s/alb-ingress/service-account.yaml
-
-                            # Add Helm repo (no-op if already added)
+ 
                             helm repo add eks https://aws.github.io/eks-charts
                             helm repo update
-
-                            # Install or upgrade ALB controller
+ 
+                            # FIX: The \$() subshell inside a Groovy triple-quoted
+                            #      string needs the $ escaped so Groovy doesn't try
+                            #      to interpolate it. Use single-quotes for the
+                            #      inner shell command or escape carefully.
+                            #      Using a pre-fetched variable is the cleanest approach.
+                            VPC_ID=\$(aws eks describe-cluster \
+                                --name ${EKS_CLUSTER_NAME} \
+                                --region ${AWS_REGION} \
+                                --query 'cluster.resourcesVpcConfig.vpcId' \
+                                --output text)
+ 
                             helm upgrade --install aws-load-balancer-controller \
                                 eks/aws-load-balancer-controller \
                                 --namespace kube-system \
@@ -273,29 +280,27 @@ pipeline {
                                 --set serviceAccount.create=false \
                                 --set serviceAccount.name=aws-load-balancer-controller \
                                 --set region=${AWS_REGION} \
-                                --set vpcId=\$(aws eks describe-cluster \
-                                    --name ${EKS_CLUSTER_NAME} \
-                                    --region ${AWS_REGION} \
-                                    --query 'cluster.resourcesVpcConfig.vpcId' \
-                                    --output text) \
+                                --set vpcId=\$VPC_ID \
                                 --wait
-
+ 
                             # ── 5. Deploy microservices ────────────────────────
+                            # FIX: IMAGE_TAG and ECR_REGISTRY must be exported
+                            #      BEFORE envsubst runs so the shell substitution
+                            #      works. They are already Jenkins env vars but
+                            #      envsubst reads from the process environment.
                             export IMAGE_TAG=${IMAGE_TAG}
                             export ECR_REGISTRY=${ECR_REGISTRY}
-
-                            # user-service
+ 
                             envsubst < k8s/user-service/deployment.yaml \
                                 | kubectl apply -f -
                             kubectl apply -f k8s/user-service/service.yaml
                             kubectl apply -f k8s/user-service/hpa.yaml
-
-                            # order-service
+ 
                             envsubst < k8s/order-service/deployment.yaml \
                                 | kubectl apply -f -
                             kubectl apply -f k8s/order-service/service.yaml
                             kubectl apply -f k8s/order-service/hpa.yaml
-
+ 
                             # ── 6. Apply ALB Ingress ───────────────────────────
                             kubectl apply -f k8s/alb-ingress/ingress.yaml
                         """
@@ -303,7 +308,8 @@ pipeline {
                 }
             }
         }
-
+ 
+        // ── VERIFY DEPLOYMENT ─────────────────────────────────────
         stage('Verify Deployment') {
             agent { label 'static-agent' }
             steps {
@@ -318,27 +324,25 @@ pipeline {
                             aws eks update-kubeconfig \
                                 --region ${AWS_REGION} \
                                 --name ${EKS_CLUSTER_NAME}
-
-                            # Wait for rollouts
+ 
                             kubectl rollout status deployment/user-service \
                                 -n cloudmart --timeout=300s
-
+ 
                             kubectl rollout status deployment/order-service \
                                 -n cloudmart --timeout=300s
-
-                            # ── Status summary ─────────────────────────────────
+ 
                             echo "=== Pods ==="
                             kubectl get pods -n cloudmart
-
+ 
                             echo "=== HPA Status ==="
                             kubectl get hpa -n cloudmart
-
+ 
                             echo "=== Ingress (ALB URL) ==="
                             kubectl get ingress -n cloudmart
-
+ 
                             echo "=== Services ==="
                             kubectl get svc -n cloudmart
-
+ 
                             echo "=== ALB Controller ==="
                             kubectl get pods -n kube-system \
                                 -l app.kubernetes.io/name=aws-load-balancer-controller
