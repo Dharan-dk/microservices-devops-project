@@ -1,0 +1,86 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "elbv2:CreateLoadBalancer",
+        "elbv2:CreateTargetGroup",
+        "elbv2:RequestTlsCertificate",
+        "elbv2:DescribeLoadBalancers",
+        "elbv2:DescribeTargetGroups",
+        "elbv2:DescribeListeners",
+        "elbv2:DescribeListenerCertificates",
+        "elbv2:DescribeSSLPolicies",
+        "elbv2:DescribeTags",
+        "elbv2:DescribeTargetHealth",
+        "elbv2:ModifyLoadBalancerAttributes",
+        "elbv2:ModifyTargetGroup",
+        "elbv2:ModifyTargetGroupAttributes",
+        "elbv2:DeleteLoadBalancer",
+        "elbv2:DeleteTargetGroup",
+        "elbv2:CreateListener",
+        "elbv2:DeleteListener",
+        "elbv2:ModifyListener",
+        "elbv2:RegisterTargets",
+        "elbv2:DeregisterTargets",
+        "elbv2:SetWebAclAssociation",
+        "elbv2:RemoveListenerCertificates",
+        "elbv2:AddListenerCertificates"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSecurityGroupRules",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeInstances",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeTags",
+        "ec2:DescribeVpcs",
+        "ec2:CreateSecurityGroup",
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:CreateTags"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "acm:ListCertificates",
+        "acm:DescribeCertificate"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "wafv2:GetWebACL",
+        "wafv2:GetWebACLForResource",
+        "wafv2:AssociateWebACL",
+        "wafv2:DisassociateWebACL"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "tag:GetResources",
+        "tag:TagResources"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:*:*:log-group:/aws/eks/*"
+    }
+  ]
+}

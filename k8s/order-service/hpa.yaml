@@ -1,0 +1,53 @@
+# ─── Order Service Horizontal Pod Autoscaler ─────────────────────────────────
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: order-service-hpa
+  namespace: cloudmart
+spec:
+  # Which deployment to scale
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: order-service
+
+  # Pod count boundaries
+  minReplicas: 2   # never go below 2 (HA guarantee)
+  maxReplicas: 6   # never exceed 6 (cost control)
+
+  metrics:
+    # ── CPU scaling ────────────────────────────────────────────────────────────
+    # Scale UP when average CPU across all pods exceeds 70%
+    # Scale DOWN when it drops back below 70%
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+
+    # ── Memory scaling ──────────────────────────────────────────────────────────
+    # Scale UP when average memory across all pods exceeds 80%
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+  behavior:
+    # Scale UP fast: add pods quickly under load
+    scaleUp:
+      stabilizationWindowSeconds: 30   # wait 30s before scaling up again
+      policies:
+        - type: Pods
+          value: 2                      # add at most 2 pods per scaling event
+          periodSeconds: 60
+
+    # Scale DOWN slow: avoid flapping
+    scaleDown:
+      stabilizationWindowSeconds: 180  # wait 3 mins before scaling down
+      policies:
+        - type: Pods
+          value: 1                      # remove at most 1 pod at a time
+          periodSeconds: 60
