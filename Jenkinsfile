@@ -10,6 +10,7 @@ pipeline {
         ORDER_SERVICE_IMAGE = "${ECR_REGISTRY}/cloudmart-order-service"
         IMAGE_TAG           = "${BUILD_NUMBER}"
         EKS_CLUSTER_NAME    = "cloudmart-eks-cluster"
+        ALB_CHART_VERSION   = "1.7.1"
     }
 
     options {
@@ -18,7 +19,6 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout') {
             agent { label 'static-agent' }
             steps {
@@ -39,10 +39,11 @@ pipeline {
         }
 
         stage('Test & Quality') {
-            agent { label 'static-agent' }
+            agent none
             stages {
 
                 stage('Setup Environment') {
+                    agent { label 'static-agent' }
                     steps {
                         unstash 'source-code'
                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
@@ -52,11 +53,26 @@ pipeline {
                                 pip install --upgrade pip --quiet
                             """
                         }
+                        // Re-stash after venv is created so next stage can use it
+                        stash(
+                            name: 'source-with-venv',
+                            includes: '''
+                                user-service/**,
+                                order-service/**,
+                                k8s/**,
+                                .trivyignore,
+                                Jenkinsfile,
+                                sonar-project.properties,
+                                venv/**
+                            '''
+                        )
                     }
                 }
 
                 stage('Install Dependencies') {
+                    agent { label 'static-agent' }
                     steps {
+                        unstash 'source-with-venv'
                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                             sh """
                                 . ${VENV}/bin/activate
@@ -66,10 +82,27 @@ pipeline {
                                     -r order-service/requirements.txt
                             """
                         }
+                        stash(
+                            name: 'source-with-deps',
+                            includes: '''
+                                user-service/**,
+                                order-service/**,
+                                k8s/**,
+                                .trivyignore,
+                                Jenkinsfile,
+                                sonar-project.properties,
+                                venv/**
+                            '''
+                        )
                     }
                 }
 
                 stage('Test + Coverage') {
+                    agent { label 'static-agent' }
+                    steps {
+                        unstash 'source-with-deps'
+                    }
+                    
                     parallel {
                         stage('User Service Tests') {
                             steps {
@@ -104,8 +137,10 @@ pipeline {
                     }
                 }
 
-                stage('SonarQube Analysis') {
+                stage('SonarQube Analysis - User Service') {
+                    agent { label 'static-agent' }
                     steps {
+                        unstash 'source-with-deps'
                         withSonarQubeEnv('SonarQube') {
                             sh """
                                 ${tool 'SonarScanner'}/bin/sonar-scanner \
@@ -114,6 +149,18 @@ pipeline {
                                     -Dsonar.python.version=3.11 \
                                     -Dsonar.python.coverage.reportPaths=user-service/coverage.xml
                             """
+                        }
+                        timeout(time: 5, unit: 'MINUTES') {
+                            waitForQualityGate abortPipeline: true
+                        }
+                    }
+                }
+
+                stage('SonarQube Analysis - Order Service') {
+                    agent { label 'static-agent' }
+                    steps {
+                        unstash 'source-with-deps'
+                        withSonarQubeEnv('SonarQube') {
                             sh """
                                 ${tool 'SonarScanner'}/bin/sonar-scanner \
                                     -Dsonar.projectKey=order-service \
@@ -122,11 +169,6 @@ pipeline {
                                     -Dsonar.python.coverage.reportPaths=order-service/coverage.xml
                             """
                         }
-                    }
-                }
-
-                stage('Quality Gate') {
-                    steps {
                         timeout(time: 5, unit: 'MINUTES') {
                             waitForQualityGate abortPipeline: true
                         }
@@ -136,10 +178,11 @@ pipeline {
         }
 
         stage('Build & Push') {
-            agent { label 'static-agent' }
+            agent none
             stages {
 
                 stage('Docker Build') {
+                    agent { label 'static-agent' }
                     steps {
                         unstash 'source-code'
                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
@@ -172,7 +215,9 @@ pipeline {
                 }
 
                 stage('Trivy Scan') {
+                    agent { label 'static-agent' }
                     steps {
+                        unstash 'source-code'
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             sh """
                                 trivy image \
@@ -194,6 +239,7 @@ pipeline {
                 }
 
                 stage('Push to ECR') {
+                    agent { label 'static-agent' }
                     steps {
                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                             withCredentials([
@@ -229,7 +275,7 @@ pipeline {
             }
         }
 
-        // ── CD STAGES — Separate from CI ─────────────────────────
+        // ── DEPLOY TO EKS ─────────────────────────────────────────
         stage('Deploy to EKS') {
             agent { label 'static-agent' }
             steps {
@@ -242,32 +288,63 @@ pipeline {
                                variable: 'AWS_SECRET_ACCESS_KEY')
                     ]) {
                         sh """
-                            # Configure kubectl for this build
+                            # ── 1. Configure kubectl ───────────────────────────
                             aws eks update-kubeconfig \
                                 --region ${AWS_REGION} \
                                 --name ${EKS_CLUSTER_NAME}
 
-                            # Create namespace if not exists
+                            # ── 2. Namespace ───────────────────────────────────
                             kubectl apply -f k8s/namespace.yaml
 
-                            # Deploy user-service with current build tag
+                            # ── 3. Install Metrics Server (required for HPA) ───
+                            kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+                            # ── 4. Install AWS Load Balancer Controller ────────
+                            kubectl apply -f k8s/alb-ingress/service-account.yaml
+
+                            helm repo add eks https://aws.github.io/eks-charts
+                            helm repo update
+
+                            VPC_ID=\$(aws eks describe-cluster \
+                                --name ${EKS_CLUSTER_NAME} \
+                                --region ${AWS_REGION} \
+                                --query 'cluster.resourcesVpcConfig.vpcId' \
+                                --output text)
+
+                            helm upgrade --install aws-load-balancer-controller \
+                                eks/aws-load-balancer-controller \
+                                --namespace kube-system \
+                                --version ${ALB_CHART_VERSION} \
+                                --set clusterName=${EKS_CLUSTER_NAME} \
+                                --set serviceAccount.create=false \
+                                --set serviceAccount.name=aws-load-balancer-controller \
+                                --set region=${AWS_REGION} \
+                                --set vpcId=\$VPC_ID \
+                                --wait
+
+                            # ── 5. Deploy microservices ────────────────────────
                             export IMAGE_TAG=${IMAGE_TAG}
                             export ECR_REGISTRY=${ECR_REGISTRY}
 
                             envsubst < k8s/user-service/deployment.yaml \
                                 | kubectl apply -f -
                             kubectl apply -f k8s/user-service/service.yaml
+                            kubectl apply -f k8s/user-service/hpa.yaml
 
-                            # Deploy order-service with current build tag
                             envsubst < k8s/order-service/deployment.yaml \
                                 | kubectl apply -f -
                             kubectl apply -f k8s/order-service/service.yaml
+                            kubectl apply -f k8s/order-service/hpa.yaml
+
+                            # ── 6. Apply ALB Ingress ───────────────────────────
+                            kubectl apply -f k8s/alb-ingress/ingress.yaml
                         """
                     }
                 }
             }
         }
 
+        // ── VERIFY DEPLOYMENT ─────────────────────────────────────
         stage('Verify Deployment') {
             agent { label 'static-agent' }
             steps {
@@ -283,19 +360,27 @@ pipeline {
                                 --region ${AWS_REGION} \
                                 --name ${EKS_CLUSTER_NAME}
 
-                            # Wait for rollout to complete
                             kubectl rollout status deployment/user-service \
                                 -n cloudmart --timeout=300s
 
                             kubectl rollout status deployment/order-service \
                                 -n cloudmart --timeout=300s
 
-                            # Show final status
                             echo "=== Pods ==="
                             kubectl get pods -n cloudmart
 
-                            echo "=== Services (LoadBalancer URLs) ==="
+                            echo "=== HPA Status ==="
+                            kubectl get hpa -n cloudmart
+
+                            echo "=== Ingress (ALB URL) ==="
+                            kubectl get ingress -n cloudmart
+
+                            echo "=== Services ==="
                             kubectl get svc -n cloudmart
+
+                            echo "=== ALB Controller ==="
+                            kubectl get pods -n kube-system \
+                                -l app.kubernetes.io/name=aws-load-balancer-controller
                         """
                     }
                 }
@@ -305,12 +390,10 @@ pipeline {
 
     post {
         always {
-            node('static-agent') {
-                cleanWs()
-            }
+            cleanWs()
         }
         success {
-            echo 'Build succeeded. Images in ECR. App deployed to EKS.'
+            echo 'Build succeeded. Images in ECR. App deployed to EKS with ALB + HPA.'
         }
         unstable {
             echo 'Build unstable. Check Trivy or test results.'

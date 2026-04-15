@@ -38,14 +38,36 @@ resource "aws_security_group" "agent_sg" {
 }
 
 resource "aws_instance" "jenkins_static_agent" {
-  ami                         = data.aws_ami.ubuntu.id
-  instance_type               = var.instance_type
-  key_name                    = var.key_name
+  # Use custom AMI if provided and enabled, otherwise use latest Ubuntu
+  ami           = var.use_custom_ami && var.custom_ami_id != "" ? var.custom_ami_id : data.aws_ami.ubuntu.id
+  instance_type = var.instance_type
+  key_name      = var.key_name
+  # Only use user_data if NOT using custom AMI
+  user_data                   = var.use_custom_ami ? null : base64encode(local.user_data_script)
   subnet_id                   = var.subnet_id
   vpc_security_group_ids      = [aws_security_group.agent_sg.id]
   associate_public_ip_address = var.associate_public_ip
 
-  user_data = <<-EOF
+  # Disable public IP association if Elastic IP will be used
+  # (Elastic IP is more stable for Jenkins agent registration)
+
+  tags = var.tags
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Associate Elastic IP if allocation ID is provided
+resource "aws_eip_association" "agent_eip" {
+  count            = var.elastic_ip_allocation_id != "" ? 1 : 0
+  instance_id      = aws_instance.jenkins_static_agent.id
+  allocation_id    = var.elastic_ip_allocation_id
+}
+
+# Local variable for user_data script (used only when not using custom AMI)
+locals {
+  user_data_script = <<-EOF
               #!/bin/bash
               set -e
               apt update -y
