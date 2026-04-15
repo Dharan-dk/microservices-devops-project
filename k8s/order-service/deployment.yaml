@@ -1,66 +1,72 @@
+# ── Order Service Deployment ─────────────────────────────────────────────
+# Manages order-service pods with rolling updates and resource limits
+# Health checks ensure only healthy pods receive traffic
+
 apiVersion: apps/v1
 kind: Deployment
-
 metadata:
   name: order-service
   namespace: cloudmart
   labels:
     app: order-service
-    component: backend
-    managed-by: jenkins
-
 spec:
   replicas: 2
   selector:
     matchLabels:
       app: order-service
+
+  # ── Rolling Update Strategy ──────────────────────────────────────────
+  # maxUnavailable: 1 pod can be down during update (maintains HA)
+  # maxSurge: 1 extra pod created during update (quick rollout)
   strategy:
     type: RollingUpdate
     rollingUpdate:
+      maxUnavailable: 1
       maxSurge: 1
-      maxUnavailable: 0
 
   template:
     metadata:
       labels:
         app: order-service
-        component: backend
-
     spec:
       containers:
         - name: order-service
+          # envsubst replaces these at deploy time in Jenkinsfile
           image: ${ECR_REGISTRY}/cloudmart-order-service:${IMAGE_TAG}
+          imagePullPolicy: Always
           ports:
-            - containerPort: 8000 
-              name: http
+            - containerPort: 8000
 
+          # ── Resource requests/limits ──────────────────────────
+          # requests: guaranteed resources (used by HPA for scaling decisions)
+          # limits:   hard cap (pod killed if exceeded)
           resources:
             requests:
-              memory: "128Mi"
-              cpu: "100m"
+              cpu: "250m"       # 0.25 vCPU guaranteed
+              memory: "256Mi"   # 256MB guaranteed
             limits:
-              memory: "256Mi"
-              cpu: "500m"
+              cpu: "500m"       # 0.5 vCPU max
+              memory: "512Mi"   # 512MB max
 
+          # ── Health probes ─────────────────────────────────────
+          # livenessProbe:  restart pod if app is stuck/deadlocked
           livenessProbe:
             httpGet:
               path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+
+          # readinessProbe: remove pod from LB if temporarily unavailable
+          readinessProbe:
+            httpGet:
+              path: /ready
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 10
             failureThreshold: 3
 
-          readinessProbe:
-            httpGet:
-              path: /ready
-              port: 8000
-            initialDelaySeconds: 5 
-            periodSeconds: 5
-            failureThreshold: 3
-
           env:
-            - name: APP_ENV
-              value: "production"
             - name: PORT
               value: "8000"
-      terminationGracePeriodSeconds: 30

@@ -1,19 +1,24 @@
-# k8s/user-service/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: user-service
   namespace: cloudmart
+  labels:
+    app: user-service
 spec:
   replicas: 2
   selector:
     matchLabels:
       app: user-service
+
   strategy:
     type: RollingUpdate
     rollingUpdate:
+      # At most 1 pod unavailable during update
+      maxUnavailable: 1
+      # At most 1 extra pod created during update
       maxSurge: 1
-      maxUnavailable: 0
+
   template:
     metadata:
       labels:
@@ -21,35 +26,42 @@ spec:
     spec:
       containers:
         - name: user-service
+          # envsubst replaces these at deploy time in Jenkinsfile
           image: ${ECR_REGISTRY}/cloudmart-user-service:${IMAGE_TAG}
-          # ↑ envsubst replaces these with actual values
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
-              name: http
+
+          # ── Resource requests/limits ──────────────────────────
+          # requests: guaranteed resources (used by HPA for scaling decisions)
+          # limits:   hard cap (pod killed if exceeded)
           resources:
             requests:
-              memory: "128Mi"
-              cpu: "100m"
+              cpu: "250m"       # 0.25 vCPU guaranteed
+              memory: "256Mi"   # 256MB guaranteed
             limits:
-              memory: "256Mi"
-              cpu: "500m"
+              cpu: "500m"       # 0.5 vCPU max
+              memory: "512Mi"   # 512MB max
+
+          # ── Health probes ─────────────────────────────────────
+          # livenessProbe:  restart pod if app is stuck/deadlocked
           livenessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 10
-            periodSeconds: 10
+            initialDelaySeconds: 15
+            periodSeconds: 20
             failureThreshold: 3
+
+          # readinessProbe: only send traffic when app is truly ready
           readinessProbe:
             httpGet:
               path: /ready
               port: 8000
-            initialDelaySeconds: 5
-            periodSeconds: 5
+            initialDelaySeconds: 10
+            periodSeconds: 10
             failureThreshold: 3
+
           env:
-            - name: APP_ENV
-              value: "production"
             - name: PORT
               value: "8000"
-      terminationGracePeriodSeconds: 30

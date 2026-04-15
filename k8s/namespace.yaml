@@ -1,3 +1,7 @@
+# ── Kubernetes Namespace ─────────────────────────────────────────────────
+# Creates isolated namespace for CloudMart application
+# Separates resources and enables per-namespace RBAC policies
+
 apiVersion: v1
 kind: Namespace
 metadata:
