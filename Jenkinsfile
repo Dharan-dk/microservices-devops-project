@@ -174,6 +174,8 @@ pipeline {
                           --region $AWS_REGION \
                           --name $EKS_CLUSTER_NAME
 
+                        kubectl apply -f k8s/namespace.yaml
+
                         export IMAGE_TAG=$IMAGE_TAG
                         export ECR_REGISTRY=$ECR_REGISTRY
 
