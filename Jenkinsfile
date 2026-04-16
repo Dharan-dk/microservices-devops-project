@@ -84,17 +84,20 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    sh '''
+                    sh """
                         ${tool 'SonarScanner'}/bin/sonar-scanner \
-                          -Dsonar.projectKey=user-service \
-                          -Dsonar.sources=user-service \
-                          -Dsonar.python.coverage.reportPaths=user-service/coverage.xml
-
+                            -Dsonar.projectKey=user-service \
+                            -Dsonar.sources=user-service \
+                            -Dsonar.python.version=3.11 \
+                            -Dsonar.python.coverage.reportPaths=user-service/coverage.xml
+                    """
+                    sh """
                         ${tool 'SonarScanner'}/bin/sonar-scanner \
-                          -Dsonar.projectKey=order-service \
-                          -Dsonar.sources=order-service \
-                          -Dsonar.python.coverage.reportPaths=order-service/coverage.xml
-                    '''
+                            -Dsonar.projectKey=order-service \
+                            -Dsonar.sources=order-service \
+                            -Dsonar.python.version=3.11 \
+                            -Dsonar.python.coverage.reportPaths=order-service/coverage.xml
+                    """
                 }
             }
         }
@@ -144,6 +147,16 @@ pipeline {
 
                         docker push $USER_SERVICE_IMAGE:$IMAGE_TAG
                         docker push $ORDER_SERVICE_IMAGE:$IMAGE_TAG
+
+                        docker tag \
+                            ${USER_SERVICE_IMAGE}:${IMAGE_TAG} \
+                            ${USER_SERVICE_IMAGE}:latest
+                        docker tag \
+                            ${ORDER_SERVICE_IMAGE}:${IMAGE_TAG} \
+                            ${ORDER_SERVICE_IMAGE}:latest
+
+                        docker push ${USER_SERVICE_IMAGE}:latest
+                        docker push ${ORDER_SERVICE_IMAGE}:latest
                     '''
                 }
             }
