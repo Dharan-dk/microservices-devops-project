@@ -171,21 +171,29 @@ pipeline {
                 ]) {
                     sh '''
                         aws eks update-kubeconfig \
-                          --region $AWS_REGION \
-                          --name $EKS_CLUSTER_NAME
+                        --region $AWS_REGION \
+                        --name $EKS_CLUSTER_NAME
 
+                        # Namespace first
                         kubectl apply -f k8s/namespace.yaml
 
-                        export IMAGE_TAG=$IMAGE_TAG
-                        export ECR_REGISTRY=$ECR_REGISTRY
+                        # IRSA ServiceAccount — must exist before ALB controller uses it
+                        kubectl apply -f k8s/alb-ingress/service-account.yaml
 
+                        # User service
                         envsubst < k8s/user-service/deployment.yaml | kubectl apply -f -
                         kubectl apply -f k8s/user-service/service.yaml
 
+                        # Order service
                         envsubst < k8s/order-service/deployment.yaml | kubectl apply -f -
                         kubectl apply -f k8s/order-service/service.yaml
 
+                        # ALB Ingress
                         kubectl apply -f k8s/alb-ingress/ingress.yaml
+
+                        # Rollout wait — confirm pods are healthy before verify stage
+                        kubectl rollout status deployment/user-service -n cloudmart --timeout=120s
+                        kubectl rollout status deployment/order-service -n cloudmart --timeout=120s
                     '''
                 }
             }
@@ -194,11 +202,40 @@ pipeline {
         // ── VERIFY ───────────────────────────────
         stage('Verify Deployment') {
             steps {
-                sh '''
-                    kubectl get pods -n cloudmart
-                    kubectl get svc -n cloudmart
-                    kubectl get ingress -n cloudmart
-                '''
+                withCredentials([
+                    string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    sh '''
+                        aws eks update-kubeconfig \
+                        --region $AWS_REGION \
+                        --name $EKS_CLUSTER_NAME
+
+                        echo "=== Pods ==="
+                        kubectl get pods -n cloudmart -o wide
+
+                        echo "=== Services & Endpoints ==="
+                        kubectl get svc -n cloudmart
+                        kubectl get endpoints -n cloudmart
+
+                        echo "=== ServiceAccount IRSA Annotation ==="
+                        kubectl get serviceaccount aws-load-balancer-controller \
+                        -n kube-system \
+                        -o jsonpath='{.metadata.annotations}' && echo ""
+
+                        echo "=== Ingress (ALB DNS) ==="
+                        kubectl get ingress -n cloudmart
+
+                        echo "=== Recent Events ==="
+                        kubectl get events -n cloudmart \
+                        --sort-by='.lastTimestamp' | tail -10
+
+                        echo "=== ALB Controller Logs ==="
+                        kubectl logs -n kube-system \
+                        deploy/aws-load-balancer-controller \
+                        --tail=20
+                    '''
+                }
             }
         }
     }
