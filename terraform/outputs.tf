@@ -24,22 +24,6 @@ output "internet_gateway_id" {
   value       = module.vpc.internet_gateway_id
 }
 
-# Jenkins Static Agent Module Outputs
-output "agent_public_ip" {
-  description = "Public IP of Jenkins static agent"
-  value       = module.jenkins_agent.agent_public_ip
-}
-
-output "agent_private_ip" {
-  description = "Private IP of Jenkins static agent"
-  value       = module.jenkins_agent.agent_private_ip
-}
-
-output "agent_security_group_id" {
-  description = "Security group ID of the Jenkins agent"
-  value       = module.jenkins_agent.agent_security_group_id
-}
-
 # EKS Cluster Outputs
 output "eks_cluster_id" {
   description = "The ID of the EKS cluster"
