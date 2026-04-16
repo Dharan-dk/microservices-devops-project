@@ -230,7 +230,7 @@ pipeline {
             }
         }
 
-        // ── DEPLOY TO EKS ─────────────────────────────────────────
+        // ── DEPLOY TO EKS ──────────────
         stage('Deploy to EKS') {
             agent { label 'static-agent' }
             steps {
@@ -250,12 +250,12 @@ pipeline {
                             def ecrRegistry    = env.ECR_REGISTRY
 
                             sh """
-                                # ── 1. Configure kubectl ───────────────────────────
+                                # ── 1. Configure kubectl 
                                 aws eks update-kubeconfig \
                                     --region ${awsRegion} \
                                     --name ${eksCluster}
 
-                                # ── 2. Namespace ───────────────────────────────────
+                                # ── 2. Namespace ────────
                                 kubectl apply -f k8s/namespace.yaml
 
                                 # ── 3. Install Metrics Server (required for HPA) ───
@@ -298,7 +298,7 @@ pipeline {
                                 kubectl apply -f k8s/order-service/service.yaml
                                 kubectl apply -f k8s/order-service/hpa.yaml
 
-                                # ── 6. Apply ALB Ingress ───────────────────────────
+                                # ── 6. Apply ALB Ingress 
                                 kubectl apply -f k8s/alb-ingress/ingress.yaml
                             """
                         }
@@ -307,7 +307,7 @@ pipeline {
             }
         }
 
-        // ── VERIFY DEPLOYMENT ─────────────────────────────────────
+        // ── VERIFY DEPLOYMENT ──────────
         stage('Verify Deployment') {
             agent { label 'static-agent' }
             steps {
