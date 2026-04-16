@@ -48,6 +48,9 @@ pipeline {
                         unstash 'source-code'
                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                             sh """
+                                sudo apt update
+                                sudo apt install -y python3-venv
+                                python3 -m venv venv
                                 ${PYTHON} -m venv ${VENV}
                                 . ${VENV}/bin/activate
                                 pip install --upgrade pip --quiet
