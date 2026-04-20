@@ -31,3 +31,27 @@ module "eks" {
     Owner       = "dharan"
   }
 }
+
+module "static_agent" {
+  source = "./modules/static-agent"
+
+  project_name      = "cloudmart"
+  environment       = "dev"
+  vpc_id            = module.vpc.vpc_id
+  subnet_id         = module.vpc.public_subnet_ids[0] # Use first public subnet
+  instance_type     = "c7i-flex.large"
+  ami_id            = "ami-05d2d839d4f73aafb" # Ubuntu 24.04 LTS in ap-south-1
+  root_volume_size  = 30
+  key_name          = "Root_EKS"
+  create_elastic_ip = true
+  allowed_ssh_cidrs = ["0.0.0.0/0"] # Adjust for production
+
+  tags = {
+    Environment = "dev"
+    Project     = "cloudmart"
+    Owner       = "dharan"
+    Purpose     = "CI/CD Static Agent"
+  }
+
+  depends_on = [module.vpc]
+}
