@@ -9,8 +9,8 @@
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Condition": {
         "StringEquals": {
-          "oidc.eks.ap-south-1.amazonaws.com/id/CDD091EFDC6F4B5A49F045EF340A0DE5:aud": "sts.amazonaws.com",
-          "oidc.eks.ap-south-1.amazonaws.com/id/CDD091EFDC6F4B5A49F045EF340A0DE5:sub": "system:serviceaccount:kube-system:aws-load-balancer-controller"
+          "oidc.eks.ap-south-1.amazonaws.com/id/CDD091EFDC6F4B5A49F045EF340A0DE5:sub": "system:serviceaccount:kube-system:aws-load-balancer-controller",
+          "oidc.eks.ap-south-1.amazonaws.com/id/CDD091EFDC6F4B5A49F045EF340A0DE5:aud": "sts.amazonaws.com"
         }
       }
     }
