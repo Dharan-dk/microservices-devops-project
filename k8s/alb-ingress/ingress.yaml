@@ -24,6 +24,39 @@ spec:
   rules:
     - http:
         paths:
+          # Root path and docs - route to order-service
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 80
+
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 80
+
+          - path: /redoc
+            pathType: Prefix
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 80
+
+          - path: /openapi.json
+            pathType: Prefix
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 80
+
           - path: /users
             pathType: Prefix
             backend:
